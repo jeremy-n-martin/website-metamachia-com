@@ -1,0 +1,56 @@
+:root {
+  font-family: Georgia, "Times New Roman", serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: #f4f0e8;
+  background:
+    radial-gradient(circle at 50% 30%, #29333a 0%, #12171b 45%, #080a0c 100%);
+}
+
+.hero {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.content {
+  width: min(760px, 100%);
+}
+
+.eyebrow {
+  margin-bottom: 1.25rem;
+  font-family: Arial, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  opacity: 0.7;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.6rem, 8vw, 6rem);
+  line-height: 0.98;
+}
+
+.description {
+  max-width: 620px;
+  margin: 2rem auto 0;
+  font-family: Arial, sans-serif;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.7;
+  opacity: 0.75;
+}
