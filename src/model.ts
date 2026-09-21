@@ -25,6 +25,8 @@ export interface Event {
   changes?: FactChange[];
   beliefs?: Belief[];
   readerReveals?: FactChange[];
+  milestone?: boolean;
+  arcIds?: string[];
   revealedIn?: string;
   source?: { chapter: string; scene: string; version: string };
 }
@@ -41,6 +43,9 @@ export interface Scene {
   version?: string;
   status?: "draft" | "complete";
   participants?: string[];
+  location?: string;
+  arcIds?: string[];
+  beat?: "setup" | "complication" | "turn" | "resolution";
   presentations?: Presentation[];
   draftChanges?: FactChange[];
 }

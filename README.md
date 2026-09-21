@@ -6,10 +6,10 @@ Un atelier utilisable sur [metamachia.com](https://metamachia.com) pour construi
 
 1. Créer une histoire dans la bibliothèque, ou ouvrir l’exemple « Les lettres de l’aube ».
 2. Définir le titre, le genre, le synopsis et l’objectif de mots dans Vue d’ensemble.
-3. Créer les personnages, lieux, objets et factions dans Univers.
-4. Organiser les chapitres et les scènes dans Manuscrit, écrire le texte (Markdown simple), définir l’intention de chaque scène, déplacer les scènes et marquer celles qui sont terminées.
+3. Commencer par **au moins un personnage et un lieu** dans Univers. Le parcours guidé ouvre les bonnes fiches, dont l’interface reste inchangée.
+4. Organiser les chapitres et les cartes de scène dans Manuscrit. Chaque scène relie son lieu, ses personnages, ses intrigues et son rôle (mise en place, complication, bascule, résolution). Ouvrir sa carte pour écrire le texte Markdown. Les boutons d’ajout et de suppression sont nommés ; la suppression d’une scène ou d’un chapitre peut être annulée avant la prochaine modification (dans la session courante).
 5. Garder les intrigues, résolutions prévues et notes dans Intrigues & notes. Les notes sont réservées à l’auteur par défaut.
-6. Déclarer les faits importants dans Continuité, choisir brouillon, canon ou plan. Un changement de texte marque ses événements comme « à revérifier ». Réouvrir et enregistrer l’événement confirme sa provenance actuelle.
+6. Dans **Frise & continuité**, parcourir une frise macro des chapitres et des intrigues, zoomable et défilante. Alterner temps de l’histoire (chapitres classés par leur premier moment) et ordre de lecture. Les périodes peuvent se chevaucher ; la distance graphique ne représente pas une durée. Cocher « Jalon marquant » sur les événements à faire apparaître dans cette vue. Sélectionner un chapitre révèle ses scènes et leurs conséquences : réalité, croyances et connaissances du lecteur.
 7. Consulter l’état et les connaissances par scène (auteur, lecteur, personnage) dans le manuscrit. Exporter le contexte en Markdown ou JSON.
 8. Exporter régulièrement le projet complet. Le manuscrit Markdown et le rapport de continuité sont aussi téléchargeables.
 
@@ -26,11 +26,17 @@ Un atelier utilisable sur [metamachia.com](https://metamachia.com) pour construi
 
 ## Continuité
 
+Les liens scène/intrigue/lieu et les jalons sont des métadonnées éditoriales, pas des faits. Les anciennes sauvegardes restent lisibles, sans inventer de liens. Le tableau d’intrigue, le manuscrit et la frise utilisent les mêmes références. Les événements issus d’une scène héritent de ses intrigues ; un événement peut aussi être relié directement à un fil. Le passage d’un texte en « terminé » ne le transforme pas en canon.
+
+Les événements conservent les statuts brouillon, canon ou plan. Un changement de texte marque ses événements comme « à revérifier ». Réouvrir et enregistrer l’événement confirme sa provenance actuelle. Supprimer une scène retire ses événements sources et nettoie les références ; les notes dont la révélation disparaît deviennent privées. L’annulation restaure l’ensemble de ces données et est désactivée dès qu’une nouvelle modification risquerait d’être écrasée.
+
 Temps de l’histoire (`storyTime`) et ordre des scènes sont indépendants. Le lecteur avance dans l’ordre de présentation, y compris dans les flash-backs. Une révélation ne modifie pas la vérité ou les croyances. Un événement présenté plusieurs fois ne se produit qu’une fois.
 
 Les propriétés narratives sont libres. `set`, `end`, `add`, `remove` couvrent états et collections partielles. Une information temporaire (`set` + `until`) disparaît à sa fin, sans retour implicite à un état précédent. Des changements incompatibles au même moment produisent un conflit et une valeur indéterminée. Le plan ne devient jamais un fait ; les événements de brouillon ne sont utilisés que si leur inclusion est demandée et leur scène déjà atteinte.
 
 ## Développement local
+
+La proposition d’aide Jev (comparaison de pistes en un appel, relecture ciblée, clé serveur et limite globale de 100 appels par heure) est décrite dans [docs/jev-design.md](docs/jev-design.md). Elle n’est pas activée : le site n’envoie aucun manuscrit à un service d’IA.
 
 ```sh
 npm ci
@@ -53,3 +59,5 @@ Le compilateur écrit `context.md`, `context.json`, `continuity-report.json`. So
 `index.html`, `assets/workshop.css` et `assets/mns/` forment le site. Les modules JavaScript générés sont versionnés pour permettre le déploiement depuis la racine de `main`, sans config serveur supplémentaire. **Exécuter `npm run build` avant de publier une modification TypeScript.** Conserver `CNAME` (`metamachia.com`) et `.nojekyll`.
 
 `web/` contient l’interface, `src/` le modèle, la validation, la sauvegarde et le compilateur, `test/` les tests. L’ancien atlas est remplacé ; ses anciennes routes renvoient vers l’atelier.
+
+Le build ajoute une empreinte de contenu aux imports du navigateur et aux ressources de la page. Cela évite de mélanger une interface récente avec d’anciens modules conservés en cache. Versionner aussi `index.html` après le build.

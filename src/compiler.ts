@@ -1,4 +1,14 @@
-import { Belief, FactChange, State, Story, key } from "./model.js";
+import {
+  Arc,
+  Belief,
+  Entity,
+  FactChange,
+  Scene,
+  State,
+  Story,
+  key,
+} from "./model.js";
+import { sceneArcs, sceneLocation } from "./narrative.js";
 
 export type View = "writer" | "reader" | "character";
 export interface CompileRequest {
@@ -22,6 +32,12 @@ export interface Context {
   appliedEvents?: string[];
   plan?: string;
   brief?: string;
+  narrative?: {
+    location?: Entity;
+    participants: Entity[];
+    arcs: Arc[];
+    beat?: Scene["beat"];
+  };
   unknown: string[];
 }
 export interface Result {
@@ -61,7 +77,26 @@ export function validateStory(story: Story): Issue[] {
   }
   const entityIds = new Set(story.entities.map((e) => e.id));
   const sceneIds = new Set(scenes.map((s) => s.id));
+  const arcIds = new Set((story.arcs ?? []).map((a) => a.id));
+  for (const item of [...scenes, ...story.events]) {
+    for (const id of item.arcIds ?? [])
+      if (!arcIds.has(id))
+        issues.push({
+          level: "error",
+          code: "MISSING_ARC",
+          message: `Intrigue absente : ${id} (${item.id})`,
+        });
+  }
   for (const scene of scenes) {
+    if (
+      scene.location &&
+      !story.entities.some((e) => e.id === scene.location && e.kind === "place")
+    )
+      issues.push({
+        level: "error",
+        code: "MISSING_PLACE",
+        message: `Lieu absent ou invalide : ${scene.location} (${scene.id})`,
+      });
     if (!Number.isFinite(scene.storyTime))
       issues.push({
         level: "error",
@@ -409,6 +444,16 @@ export function compile(story: Story, request: CompileRequest): Result {
     context.appliedEvents = state.applied;
     context.plan = scene.plan ?? "";
     context.brief = chapter.brief ?? "";
+    context.narrative = {
+      location: sceneLocation(story, scene),
+      participants: story.entities.filter((en) =>
+        scene.participants?.includes(en.id),
+      ),
+      arcs: (story.arcs ?? []).filter((a) =>
+        sceneArcs(story, scene).includes(a.id),
+      ),
+      beat: scene.beat,
+    };
   }
   context.unknown = [
     "Toute propriété absente est non documentée. Les inventaires peuvent être partiels.",
@@ -417,6 +462,22 @@ export function compile(story: Story, request: CompileRequest): Result {
     Object.entries(v)
       .map(([k, value]) => `- ${k} : ${JSON.stringify(value)}`)
       .join("\n") || "Aucune information documentée.";
-  const markdown = `# Contexte — ${chapter.title ?? chapter.id} / ${scene.title ?? scene.id}\n\nVue : ${view}${view === "character" ? ` (${request.character})` : ""} · Moment : ${scene.storyTime}\n\n## ${view === "writer" ? "État du monde" : "Informations accessibles"}\n${block(context.facts)}\n\n## Connaissances\n${block(context.knowledge)}\n\n## Notes autorisées\n${context.notes.map((n) => n.text).join("\n\n") || "Aucune."}${view === "writer" ? `\n\n## Brief\n${context.brief}\n\n## Plan (intention)\n${context.plan}` : ""}\n\n${context.unknown.join("\n")}\n`;
+  const narrativeText = context.narrative
+    ? "\n\n## Repères éditoriaux (pas des faits)\n" +
+      [
+        context.narrative.location
+          ? `Lieu : ${context.narrative.location.name} — ${context.narrative.location.description ?? ""}`
+          : "Lieu non défini.",
+        ...context.narrative.participants.map(
+          (en) => `Présence : ${en.name} — ${en.description ?? ""}`,
+        ),
+        ...context.narrative.arcs.map(
+          (a) =>
+            `Intrigue : ${a.title} — ${a.description}\nRésolution envisagée : ${a.resolution}`,
+        ),
+        `Rôle prévu : ${context.narrative.beat ?? "non défini"}`,
+      ].join("\n")
+    : "";
+  const markdown = `# Contexte — ${chapter.title ?? chapter.id} / ${scene.title ?? scene.id}\n\nVue : ${view}${view === "character" ? ` (${request.character})` : ""} · Moment : ${scene.storyTime}\n\n## ${view === "writer" ? "État du monde" : "Informations accessibles"}\n${block(context.facts)}\n\n## Connaissances\n${block(context.knowledge)}\n\n## Notes autorisées\n${context.notes.map((n) => n.text).join("\n\n") || "Aucune."}${view === "writer" ? `\n\n## Brief\n${context.brief}\n\n## Plan (intention)\n${context.plan}${narrativeText}` : ""}\n\n${context.unknown.join("\n")}\n`;
   return { state, context, markdown, issues };
 }

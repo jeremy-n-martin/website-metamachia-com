@@ -1,5 +1,7 @@
-import { compile, validateStory } from "../src/compiler.js";
-import { createProject, demoProject, LibraryStore, manuscript, newScene, parseArchive, projectWords, STORAGE_KEY, uid, wordCount, } from "../src/project.js";
+import { compile, validateStory } from "../src/compiler.js?v=ea1cead32592";
+import { createProject, demoProject, LibraryStore, manuscript, newScene, parseArchive, projectWords, STORAGE_KEY, uid, wordCount, } from "../src/project.js?v=ea1cead32592";
+import { allScenes, universeReadiness, sceneLocation, sceneEvents, removeScenes as deleteScenes, removeArc, DeletionUndo, } from "../src/narrative.js?v=ea1cead32592";
+import { guide, sceneBoard, sceneLinks, plotMap, narrativeTimeline, eventCard, beats, } from "./narrative-ui.js?v=ea1cead32592";
 const app = document.querySelector("#app");
 const modal = document.querySelector("#modal");
 const toastEl = document.querySelector("#toast");
@@ -79,6 +81,12 @@ let view = "writer";
 let character = "";
 let includeDraft = false;
 let preview = false;
+let writingMode = "board";
+let timelineOrder = "reading";
+let timelineZoom = 1;
+let timelineChapter = "";
+let continuityScope = "chapter";
+const deletionUndo = new DeletionUndo();
 let worldFilter = "all";
 let eventFilter = "all";
 let search = "";
@@ -98,7 +106,10 @@ function project() {
 }
 function currentScene() {
     const p = project();
-    const all = p?.chapters.flatMap((c) => c.scenes) ?? [];
+    const selectedChapter = route === "continuity"
+        ? p?.chapters.find((c) => c.id === timelineChapter)
+        : undefined;
+    const all = selectedChapter?.scenes ?? p?.chapters.flatMap((c) => c.scenes) ?? [];
     return all.find((s) => s.id === sceneId) ?? all[0];
 }
 function currentChapter() {
@@ -145,6 +156,7 @@ function save() {
 }
 function changed() {
     dirty = true;
+    document.querySelector("#undo-banner")?.setAttribute("hidden", "");
     if (project())
         project().updatedAt = new Date().toISOString();
     document
@@ -208,10 +220,10 @@ function renderLibrary() {
 }
 const navs = [
     ["overview", "home", "Vue d’ensemble"],
-    ["write", "pen", "Manuscrit"],
     ["world", "world", "Univers"],
+    ["write", "pen", "Manuscrit"],
     ["plot", "plot", "Intrigues & notes"],
-    ["continuity", "check", "Continuité"],
+    ["continuity", "check", "Frise & continuité"],
     ["exports", "export", "Exports & sauvegarde"],
 ];
 function sidebar() {
@@ -221,14 +233,17 @@ function sidebar() {
 function pageHead(kicker, title, description, actions = "") {
     return `<div class="page-heading"><div><p class="eyebrow">${kicker}</p><h1>${title}</h1><p>${description}</p></div>${actions ? `<div class="actions">${actions}</div>` : ""}</div>`;
 }
-function overview() {
+function overviewContent() {
     const p = project();
     const words = projectWords(p), scenes = p.chapters.flatMap((c) => c.scenes);
-    return `${pageHead("VOTRE TABLE DE TRAVAIL", "Chaque histoire a son chemin.", "Retrouvez votre intention, puis reprenez le fil.", btn("Reprendre l’écriture " + icon("arrow"), "nav", "primary", 'data-id="write"'))}<section class="overview-grid"><div class="vision card"><div class="section-head"><h2>L’histoire que vous racontez</h2>${tag("VISION")}</div><label class="sr-only" for="story-title">Titre de l’histoire</label><input id="story-title" class="title-input" data-project="title" value="${e(p.title)}" maxlength="160" aria-label="Titre de l’histoire"><label class="field compact">Genre / ambiance<input data-project="genre" value="${e(p.genre)}" placeholder="Fantasy, aventure, roman intime…"></label><label class="field">L’intention & le synopsis<textarea class="synopsis" data-project="synopsis" placeholder="De quoi parle votre histoire ? Quel voyage souhaitez-vous faire vivre au lecteur ?">${e(p.synopsis)}</textarea></label></div><div class="progress-card"><p class="eyebrow">MOT APRÈS MOT</p><div class="word-total" data-total>${fmt(words)}</div><p>mots écrits sur <strong>${fmt(p.targetWords)}</strong></p><div class="progress-track"><span style="width:${Math.min(100, (words / p.targetWords) * 100)}%"></span></div><label class="field">Votre objectif en mots<input type="number" min="1" max="10000000" data-project="targetWords" value="${p.targetWords}"></label><div class="tiny-stats"><span><strong>${p.chapters.length}</strong> chapitres</span><span><strong>${scenes.length}</strong> scènes</span></div><p class="progress-foot">${scenes.filter((s) => s.status === "complete").length} scène(s) terminée(s).<br>La prochaine phrase vous attend.</p></div></section><section class="card chapter-overview"><div class="section-head"><h2>Le chemin de votre récit</h2>${btn(icon("plus") + "Chapitre", "new-chapter", "secondary small")}</div>${p.chapters.length ? p.chapters.map((c, i) => `<div class="chapter-row"><span class="chapter-number">${String(i + 1).padStart(2, "0")}</span><div><h3>${e(c.title || "Sans titre")}</h3><p>${c.scenes.length} scène(s) · ${fmt(c.scenes.reduce((n, s) => n + wordCount(s.text ?? ""), 0))} mots</p></div>${btn("Écrire " + icon("arrow"), "open-chapter", "quiet", `data-id="${c.id}"`)}</div>`).join("") : empty("Le début d’un voyage", "Ajoutez le premier chapitre.")}</section><div class="tip">${icon("spark")} <p><strong>Un repère pour écrire.</strong> Commencez par une scène, puis ajoutez à l’univers les personnages et lieux qu’elle fait naître.</p></div>`;
+    return `${pageHead("VOTRE TABLE DE TRAVAIL", "Chaque histoire a son chemin.", "Retrouvez votre intention, puis reprenez le fil.", btn("Reprendre l’écriture " + icon("arrow"), "nav", "primary", 'data-id="write"'))}<section class="overview-grid"><div class="vision card"><div class="section-head"><h2>L’histoire que vous racontez</h2>${tag("VISION")}</div><label class="sr-only" for="story-title">Titre de l’histoire</label><input id="story-title" class="title-input" data-project="title" value="${e(p.title)}" maxlength="160" aria-label="Titre de l’histoire"><label class="field compact">Genre / ambiance<input data-project="genre" value="${e(p.genre)}" placeholder="Fantasy, aventure, roman intime…"></label><label class="field">L’intention & le synopsis<textarea class="synopsis" data-project="synopsis" placeholder="De quoi parle votre histoire ? Quel voyage souhaitez-vous faire vivre au lecteur ?">${e(p.synopsis)}</textarea></label></div><div class="progress-card"><p class="eyebrow">MOT APRÈS MOT</p><div class="word-total" data-total>${fmt(words)}</div><p>mots écrits sur <strong>${fmt(p.targetWords)}</strong></p><div class="progress-track"><span style="width:${Math.min(100, (words / p.targetWords) * 100)}%"></span></div><label class="field">Votre objectif en mots<input type="number" min="1" max="10000000" data-project="targetWords" value="${p.targetWords}"></label><div class="tiny-stats"><span><strong>${p.chapters.length}</strong> chapitres</span><span><strong>${scenes.length}</strong> scènes</span></div><p class="progress-foot">${scenes.filter((s) => s.status === "complete").length} scène(s) terminée(s).<br>La prochaine phrase vous attend.</p></div></section><section class="card chapter-overview"><div class="section-head"><h2>Le chemin de votre récit</h2>${btn(icon("plus") + "Chapitre", "new-chapter", "secondary small")}</div>${p.chapters.length ? p.chapters.map((c, i) => `<div class="chapter-row"><span class="chapter-number">${String(i + 1).padStart(2, "0")}</span><div><h3>${e(c.title || "Sans titre")}</h3><p>${c.scenes.length} scène(s) · ${fmt(c.scenes.reduce((n, s) => n + wordCount(s.text ?? ""), 0))} mots</p></div>${btn("Écrire " + icon("arrow"), "open-chapter", "quiet", `data-id="${c.id}"`)}</div>`).join("") : empty("Le début d’un voyage", "Ajoutez le premier chapitre.")}</section><div class="tip">${icon("spark")} <p><strong>Un repère pour écrire.</strong> Posez votre univers, reliez une intrigue à vos scènes, puis écrivez et vérifiez ce qui change.</p></div>`;
+}
+function overview() {
+    return guide(project()) + overviewContent();
 }
 function outline() {
     const p = project(), s = currentScene();
-    return `<aside class="outline"><div class="section-head"><span class="eyebrow">CHAPITRES</span>${btn(icon("plus"), "new-chapter", "icon-button", 'aria-label="Ajouter un chapitre"')}</div>${p.chapters.map((c, i) => `<section class="outline-chapter"><div class="outline-heading"><button data-action="edit-chapter" data-id="${c.id}" title="Modifier le chapitre">${String(i + 1).padStart(2, "0")} <strong>${e(c.title || c.id)}</strong></button>${btn("+", "new-scene", "icon-button", `data-id="${c.id}" aria-label="Ajouter une scène à ${e(c.title)}"`)}</div>${c.scenes.map((x, j) => `<button class="scene-link ${s?.id === x.id ? "selected" : ""}" data-action="select-scene" data-id="${x.id}"><span class="scene-dot ${x.status === "complete" ? "done" : ""}"></span><span>${e(x.title || `Scène ${j + 1}`)}<small>${fmt(wordCount(x.text ?? ""))} mots · t ${x.storyTime}</small></span></button>`).join("")}${!c.scenes.length ? '<p class="empty-inline">Ajoutez votre première scène.</p>' : ""}</section>`).join("")}</aside>`;
+    return `<aside class="outline"><div class="section-head"><span class="eyebrow">CHAPITRES</span>${btn("+ Chapitre", "new-chapter", "secondary small", 'aria-label="Ajouter un chapitre"')}</div>${p.chapters.map((c, i) => `<section class="outline-chapter"><div class="outline-heading"><button data-action="edit-chapter" data-id="${c.id}" title="Modifier le chapitre">${String(i + 1).padStart(2, "0")} <strong>${e(c.title || c.id)}</strong></button>${btn("+ Scène", "new-scene", "quiet small", `data-id="${c.id}" aria-label="Ajouter une scène à ${e(c.title)}"`)}</div>${c.scenes.map((x, j) => `<button class="scene-link ${s?.id === x.id ? "selected" : ""}" data-action="select-scene" data-id="${x.id}"><span class="scene-dot ${x.status === "complete" ? "done" : ""}"></span><span>${e(x.title || `Scène ${j + 1}`)}<small>${fmt(wordCount(x.text ?? ""))} mots · t ${x.storyTime}</small></span></button>`).join("")}${!c.scenes.length ? '<p class="empty-inline">Ajoutez votre première scène.</p>' : ""}</section>`).join("")}</aside>`;
 }
 function contextPanel() {
     const s = currentScene(), c = currentChapter(), p = project();
@@ -254,19 +269,20 @@ function contextPanel() {
             .join("")}</select></label>`
         : ""}<label class="checkbox"><input id="include-draft" type="checkbox" ${includeDraft ? "checked" : ""}> Inclure les faits du brouillon</label><div class="context-facts">${Object.keys(result.context.facts).length
         ? Object.entries(result.context.facts)
-            .map(([k, v]) => `<div class="fact"><small>${e(names(k))}</small><strong>${e(typeof v === "string" ? v : JSON.stringify(v))}</strong></div>`)
+            .map(([k, v]) => `<div class="fact"><small>${e(names(k))}</small><strong>${e(v === true ? "Oui" : v === false ? "Non" : typeof v === "string" ? v : JSON.stringify(v))}</strong></div>`)
             .join("")
         : empty("Rien de documenté", view === "writer"
             ? "Ajoutez un fait de continuité pour commencer."
             : "Aucune information explicite dans cette vue.")}</div>${result.context.notes.length ? `<details><summary>${result.context.notes.length} note(s) autorisée(s)</summary>${result.context.notes.map((n) => `<p class="note-excerpt">${e(n.text)}</p>`).join("")}</details>` : ""}${view === "writer" && result.issues.length ? `<button class="issue-link" data-action="nav" data-id="continuity">${result.issues.length} point(s) à vérifier →</button>` : ""}<p class="small muted">Une absence d’information ne signifie pas « faux ».</p>${btn(icon("export") + "Exporter ce contexte", "context-export", "secondary wide")}</aside>`;
 }
 function writing() {
+    if (writingMode === "board")
+        return sceneBoard(project());
     const p = project(), s = currentScene(), c = currentChapter();
     if (!s || !c)
         return `${outline()}<div class="page-pad">${empty("Votre manuscrit commence ici", "Créez un chapitre et sa première scène.", btn("Ajouter un chapitre", "new-chapter", "primary"))}</div>`;
     sceneId = s.id;
-    return `${outline()}<section class="editor-column"><div class="editor-toolbar"><span>${e(c.title)} <span class="muted">/ Scène ${c.scenes.indexOf(s) + 1}</span></span><div>${btn(preview ? "Modifier" : "Aperçu", "toggle-preview", "quiet small")}${btn("Réglages", "edit-scene", "quiet small", `data-id="${s.id}"`)}</div></div><div class="editor-page"><p class="eyebrow">${s.status === "complete" ? "SCÈNE TERMINÉE" : "EN COURS D’ÉCRITURE"} <span>· MOMENT ${s.storyTime}</span></p><input class="scene-title" data-scene="title" value="${e(s.title)}" placeholder="Le titre de votre scène" aria-label="Titre de la scène"><details class="scene-brief" ${s.plan ? "" : "open"}><summary>L’intention de la scène</summary><textarea data-scene="plan" placeholder="Que doit-il se passer ? Qu’est-ce qui doit rester secret ?" aria-label="Plan de la scène">${e(s.plan)}</textarea></details>${preview ? `<article class="prose">${s.text ? markdown(s.text) : '<p class="muted">La page attend vos premiers mots.</p>'}</article>` : `<textarea class="manuscript-editor" data-scene="text" aria-label="Texte de la scène" placeholder="Tout commence par une phrase…" spellcheck="true">${e(s.text)}</textarea>`}<div class="editor-bottom"><span data-scene-words>${fmt(wordCount(s.text ?? ""))} mots</span><label class="checkbox"><input type="checkbox" id="scene-complete" ${s.status === "complete" ? "checked" : ""}> Scène terminée</label></div></div><section class="scene-events"><div class="section-head"><h3>Ce qui change dans cette scène</h3>${btn(icon("plus") + "Fait", "new-event", "secondary small")}</div><p class="muted small">Déclarez les changements importants. Le texte n’est pas analysé automatiquement.</p>${p.events
-        .filter((ev) => ev.source?.scene === s.id)
+    return `${outline()}<section class="editor-column"><div class="editor-toolbar">${btn("← Tableau des scènes", "writing-board", "quiet small")}<span>${e(c.title)} <span class="muted">/ Scène ${c.scenes.indexOf(s) + 1}</span></span><div>${btn(preview ? "Modifier" : "Aperçu", "toggle-preview", "quiet small")}${btn("Relier / préparer", "edit-scene", "secondary small", `data-id="${s.id}"`)}${btn("Supprimer la scène", "delete-scene", "quiet small danger", `data-id="${s.id}"`)}</div></div>${sceneLinks(p, s)}<div class="editor-page"><p class="eyebrow">${s.status === "complete" ? "SCÈNE TERMINÉE" : "EN COURS D’ÉCRITURE"} <span>· MOMENT ${s.storyTime}</span></p><input class="scene-title" data-scene="title" value="${e(s.title)}" placeholder="Le titre de votre scène" aria-label="Titre de la scène"><details class="scene-brief" ${s.plan ? "" : "open"}><summary>L’intention de la scène</summary><textarea data-scene="plan" placeholder="Que doit-il se passer ? Qu’est-ce qui doit rester secret ?" aria-label="Plan de la scène">${e(s.plan)}</textarea></details>${preview ? `<article class="prose">${s.text ? markdown(s.text) : '<p class="muted">La page attend vos premiers mots.</p>'}</article>` : `<textarea class="manuscript-editor" data-scene="text" aria-label="Texte de la scène" placeholder="Tout commence par une phrase…" spellcheck="true">${e(s.text)}</textarea>`}<div class="editor-bottom"><span data-scene-words>${fmt(wordCount(s.text ?? ""))} mots</span><label class="checkbox"><input type="checkbox" id="scene-complete" ${s.status === "complete" ? "checked" : ""}> Scène terminée</label></div></div><section class="scene-events"><div class="section-head"><h3>Ce qui change dans cette scène</h3>${btn(icon("plus") + "Déclarer un événement", "new-event", "secondary small")}</div><p class="muted small">Déclarez les changements importants. Le texte n’est pas analysé automatiquement.</p>${sceneEvents(p, s)
         .map((ev) => `<button class="event-chip" data-action="edit-event" data-id="${ev.id}">${tag(statuses[ev.status ?? "canon"], ev.status ?? "canon")}<span>${e(ev.title)}</span>${icon("chevron")}</button>`)
         .join("") ||
         '<p class="empty-inline">Aucun changement déclaré pour cette scène.</p>'}</section></section><div id="context-container">${contextPanel()}</div>`;
@@ -281,7 +297,7 @@ function universe() {
 }
 function plot() {
     const p = project();
-    return `${pageHead("LE FIL ROUGE", "Tissez votre intrigue.", "Gardez vos promesses narratives, vos secrets et vos idées à portée de main.", btn(icon("plus") + "Intrigue", "new-arc", "primary") + btn(icon("plus") + "Note", "new-note", "secondary"))}<div class="plot-board">${[
+    return `${pageHead("LE FIL ROUGE", "Tissez votre intrigue.", "Gardez vos promesses narratives, vos secrets et vos idées à portée de main.", btn(icon("plus") + "Intrigue", "new-arc", "primary") + btn(icon("plus") + "Note", "new-note", "secondary"))}${plotMap(p)}<details class="plot-status-board"><summary>Tableau de progression des intrigues</summary><div class="plot-board">${[
         "open",
         "progress",
         "resolved",
@@ -290,29 +306,37 @@ function plot() {
         .filter((a) => a.status === st)
         .map((a) => `<button class="arc-card" data-action="edit-arc" data-id="${a.id}"><h3>${e(a.title)}</h3><p>${e(a.description || "Précisez les enjeux de cette intrigue.")}</p>${a.resolution ? "<small>Une résolution envisagée ↗</small>" : ""}</button>`)
         .join("") || '<p class="empty-inline">Un fil encore à tisser.</p>'}</section>`)
-        .join("")}</div><section class="notes-section"><div class="section-head"><div><p class="eyebrow">LE CARNET</p><h2>Notes & secrets</h2></div>${btn("Nouvelle note", "new-note", "secondary small")}</div><div class="notes-grid">${p.notes.map((n) => `<button class="note-card" data-action="edit-note" data-id="${n.id}">${tag(n.scope === "author" ? "Auteur uniquement" : n.scope === "reader" ? "Lecteur" : (p.entities.find((en) => en.id === n.scope.slice(10))?.name ?? "Personnage"))}<h3>${e(n.title || "Sans titre")}</h3><p>${e(n.text)}</p></button>`).join("") || empty("Le carnet est ouvert", "Consignez une idée, une règle de votre monde ou un secret réservé à l’auteur.")}</div></section>`;
+        .join("")}</div></details><section class="notes-section"><div class="section-head"><div><p class="eyebrow">LE CARNET</p><h2>Notes & secrets</h2></div>${btn("Nouvelle note", "new-note", "secondary small")}</div><div class="notes-grid">${p.notes.map((n) => `<button class="note-card" data-action="edit-note" data-id="${n.id}">${tag(n.scope === "author" ? "Auteur uniquement" : n.scope === "reader" ? "Lecteur" : (p.entities.find((en) => en.id === n.scope.slice(10))?.name ?? "Personnage"))}<h3>${e(n.title || "Sans titre")}</h3><p>${e(n.text)}</p></button>`).join("") || empty("Le carnet est ouvert", "Consignez une idée, une règle de votre monde ou un secret réservé à l’auteur.")}</div></section>`;
 }
 function continuity() {
     const p = project(), s = currentScene(), c = currentChapter();
+    const chapter = p.chapters.find((ch) => ch.id === timelineChapter) ?? c;
+    timelineChapter = chapter?.id ?? "";
     const result = s && c
-        ? compile(p, {
-            chapter: c.id,
-            scene: s.id,
-            view: "writer",
-            includeDraft: true,
-        })
+        ? compile(p, { chapter: c.id, scene: s.id, view: "writer", includeDraft })
         : null;
     const issues = result?.issues ?? validateStory(p);
+    const relevant = chapter
+        ? new Set(chapter.scenes.flatMap((sc) => sceneEvents(p, sc)))
+        : new Set();
     const events = p.events
-        .filter((ev) => eventFilter === "all" || (ev.status ?? "canon") === eventFilter)
+        .filter((ev) => (eventFilter === "all" || (ev.status ?? "canon") === eventFilter) &&
+        (continuityScope === "all" || relevant.has(ev)))
         .sort((a, b) => a.storyTime - b.storyTime);
-    return `${pageHead("LA MÉMOIRE DE VOTRE RÉCIT", "Gardez le fil.", "Chaque changement a son moment. Chaque connaissance, son point de vue.", btn(icon("plus") + "Ajouter un événement", "new-event", "primary"))}<div class="continuity-notice"><span class="check-bubble">${issues.some((i) => i.level === "error") ? "!" : icon("check")}</span><div><h3>${issues.length ? `${issues.length} point(s) à vérifier` : "Aucun conflit détecté pour cette scène"}</h3><p>État reconstruit pour ${e(s?.title ?? "aucune scène sélectionnée")}. Seuls les faits déclarés sont vérifiés.</p></div>${btn("Voir dans le manuscrit", "nav", "quiet", 'data-id="write"')}</div>${issues.length ? `<details class="issues" open><summary>Rapport de continuité</summary>${issues.map((i) => `<p class="issue ${i.level}"><strong>${i.level === "error" ? "À corriger" : "À revoir"}</strong> ${e(i.message)}</p>`).join("")}</details>` : ""}<div class="section-head"><h2>Chronologie de l’histoire</h2><div class="tabs">${["all", "canon", "draft", "plan"].map((st) => btn(st === "all" ? "Tout" : statuses[st], "event-filter", `tab ${st === eventFilter ? "active" : ""}`, `data-id="${st}"`)).join("")}</div></div><p class="muted small">Le moment est un repère numérique libre (ex. 1, 2, 10). L’ordre des scènes détermine les révélations au lecteur.</p><div class="timeline">${events.map((ev) => `<article class="timeline-row"><div class="time-marker">${ev.storyTime}<small>moment</small></div><div class="timeline-content"><div class="section-head"><h3>${e(ev.title)}</h3>${tag(statuses[ev.status ?? "canon"], ev.status ?? "canon")}</div><p>${(ev.changes ?? []).length} fait(s) · ${(ev.beliefs ?? []).length} croyance(s) · ${(ev.readerReveals ?? []).length} révélation(s)</p><small>${e(p.chapters.flatMap((ch) => ch.scenes).find((sc) => sc.id === ev.source?.scene)?.title ?? "Déclaration indépendante")}</small></div>${btn("Modifier " + icon("chevron"), "edit-event", "quiet", `data-id="${ev.id}"`)}</article>`).join("") || empty("Votre chronologie est à écrire", "Enregistrez une transformation, une rencontre ou une révélation.", btn("Premier événement", "new-event", "primary"))}</div>`;
+    return `${pageHead("L’ARCHITECTURE DU RÉCIT", "Prenez de la hauteur.", "Parcourez les chapitres et les fils narratifs, puis explorez leurs conséquences.", btn(icon("plus") + "Ajouter un événement", "new-event", "primary"))}
+    ${narrativeTimeline(p, timelineChapter, timelineOrder, timelineZoom, eventFilter)}
+    <section class="chapter-inspector"><div class="section-head"><div><p class="eyebrow">CHAPITRE SÉLECTIONNÉ</p><h2>${e(chapter?.title ?? "Aucun chapitre")}</h2></div>${chapter ? btn("Modifier le chapitre", "edit-chapter", "secondary small", `data-id="${chapter.id}"`) : ""}</div><p class="muted">${e(chapter?.brief || "Sélectionnez un chapitre sur la frise, puis une scène pour examiner l’état du récit.")}</p><div class="inspector-scenes">${chapter?.scenes.map((sc) => btn(e(sc.title ?? sc.id) + " · moment " + sc.storyTime, "inspect-scene", `scene-inspector-tab ${sc.id === s?.id ? "active" : ""}`, `data-id="${sc.id}"`)).join("") ?? ""}</div></section>
+    ${s ? sceneLinks(p, s) : ""}<div class="continuity-workbench"><section><div class="continuity-notice"><span class="check-bubble">${issues.some((i) => i.level === "error") ? "!" : icon("check")}</span><div><h3>${issues.length ? `${issues.length} point(s) à vérifier` : "Aucun conflit explicite détecté"}</h3><p>Scène : ${e(s?.title ?? "aucune")}. Le texte libre n’est pas analysé automatiquement.</p></div>${s ? btn("Ouvrir le texte", "select-scene", "quiet small", `data-id="${s.id}"`) : ""}</div>
+    ${issues.length ? `<details class="issues" open><summary>Rapport de continuité</summary>${issues.map((i) => `<p class="issue ${i.level}">${e(i.message)}</p>`).join("")}</details>` : ""}
+    <div class="section-head"><h2>Les conséquences</h2><label class="field compact">Périmètre<select id="continuity-scope">${option("chapter", "Ce chapitre", continuityScope)}${option("all", "Tout le récit", continuityScope)}</select></label></div><div class="tabs">${["all", "canon", "draft", "plan"].map((st) => btn(st === "all" ? "Tous les statuts" : statuses[st], "event-filter", `tab ${st === eventFilter ? "active" : ""}`, `data-id="${st}"`)).join("")}</div><p class="muted small">Canon = établi · Brouillon = hypothèse de travail · Plan = intention, sans effet sur l’état.</p>
+    <div class="event-cards">${events.map((ev) => eventCard(p, ev)).join("") || empty("Aucun événement dans ce périmètre", "Ajoutez un événement à une scène ou choisissez « Tout le récit ».")}</div></section><div id="context-container">${contextPanel()}</div></div>`;
 }
 function exportsPage() {
     const p = project(), s = currentScene();
     return `${pageHead("VOTRE HISTOIRE VOUS APPARTIENT", "Emportez votre travail.", "Sauvegardez le projet complet, partagez le manuscrit ou préparez le contexte d’une scène.")}<div class="export-grid"><article class="export-card">${icon("book")}<h2>Projet complet</h2><p>Tout l’atelier dans un fichier : manuscrit, univers, intrigues, notes et continuité. Réimportable sur un autre navigateur.</p>${tag("JSON · SAUVEGARDE")}${btn("Télécharger la sauvegarde", "backup", "primary wide")}</article><article class="export-card">${icon("pen")}<h2>Manuscrit</h2><p>Les chapitres et les scènes dans leur ordre de lecture, avec les titres. Un document texte prêt à relire et à partager.</p>${tag("MARKDOWN")}${btn("Exporter le manuscrit", "manuscript", "secondary wide")}</article><article class="export-card">${icon("spark")}<h2>Contexte de scène</h2><p>Les informations autorisées selon le point de vue sélectionné dans le manuscrit. Scène : ${e(s?.title ?? "non sélectionnée")}.</p>${tag("MARKDOWN + JSON")}${btn("Choisir la vue et exporter", "nav", "secondary wide", 'data-id="write"')}</article><article class="export-card">${icon("check")}<h2>Rapport de continuité</h2><p>Les références manquantes, sources modifiées et contradictions explicites pour toutes les scènes.</p>${tag("JSON")}${btn("Exporter le rapport", "report", "secondary wide")}</article></div><div class="storage-card"><h2>À propos de vos sauvegardes</h2><p>L’enregistrement automatique est local à ce navigateur. Effacer les données du site peut supprimer vos histoires. Téléchargez régulièrement le projet complet : ce fichier permet de reprendre sur un autre appareil.</p><div class="actions">${btn("Importer une histoire", "import", "secondary")}${btn("Sauvegarde de secours du navigateur", "rescue", "quiet")}</div></div>`;
 }
 function render() {
+    const timelineLeft = document.querySelector(".timeline-scroll")?.scrollLeft ?? 0;
     const p = project();
     document.title = p
         ? `${p.title} — Metamachia`
@@ -321,6 +345,9 @@ function render() {
         app.innerHTML = renderLibrary();
         return;
     }
+    const gated = ["write", "plot", "continuity"].includes(route) &&
+        !universeReadiness(p).ready;
+    const isEditor = route === "write" && writingMode === "editor" && !gated;
     const pages = {
         overview,
         write: writing,
@@ -329,7 +356,8 @@ function render() {
         continuity,
         exports: exportsPage,
     };
-    app.innerHTML = `<div class="workshop ${route === "write" ? "writing-layout" : ""}">${sidebar()}<main class="main-panel"><header class="topbar">${btn(icon("menu"), "menu", "icon-button mobile-menu", 'aria-label="Ouvrir le menu"')}<span>${e(navs.find((n) => n[0] === route)?.[2])}</span><span class="save-state ${saveError ? "error" : ""}" data-save>${saveError ? "Sauvegarde impossible — exportez votre travail" : dirty ? "Enregistrement…" : "Enregistré sur cet appareil"}</span></header><div id="save-warning" class="notice error" ${saveError ? "" : "hidden"}>${e(saveError)}</div><div class="${route === "write" ? "writing-workspace" : "page-pad"}">${(pages[route] ?? overview)()}</div></main></div>`;
+    app.innerHTML = `<div class="workshop ${isEditor ? "writing-layout" : ""}">${sidebar()}<main class="main-panel"><header class="topbar">${btn(icon("menu"), "menu", "icon-button mobile-menu", 'aria-label="Ouvrir le menu"')}<span>${e(navs.find((n) => n[0] === route)?.[2])}</span><span class="save-state ${saveError ? "error" : ""}" data-save>${saveError ? "Sauvegarde impossible — exportez votre travail" : dirty ? "Enregistrement…" : "Enregistré sur cet appareil"}</span></header><div id="save-warning" class="notice error" ${saveError ? "" : "hidden"}>${e(saveError)}</div><div id="undo-banner" class="undo-banner" ${deletionUndo.available(p) ? "" : "hidden"}>Suppression effectuée. Vous pouvez la rétablir avant votre prochaine modification.${btn("Annuler la suppression", "undo-delete", "secondary small")}</div><div class="${isEditor ? "writing-workspace" : route === "continuity" || route === "write" ? "page-pad narrative-page" : "page-pad"}">${gated ? guide(p, true) : (pages[route] ?? overview)()}</div></main></div>`;
+    document.querySelector(".timeline-scroll")?.scrollTo({ left: timelineLeft });
 }
 function editChapter(id) {
     const p = project();
@@ -361,9 +389,19 @@ function editChapter(id) {
 }
 function editScene(id) {
     const p = project(), c = p.chapters.find((c) => c.scenes.some((s) => s.id === id)), s = c.scenes.find((s) => s.id === id);
-    openDialog("Réglages de la scène", field("Titre", "title", s.title, "text", "required") +
+    openDialog("Préparer et relier la scène", field("Titre", "title", s.title, "text", "required") +
         field("Moment dans l’histoire", "storyTime", s.storyTime, "number", 'required step="any"') +
         select("Chapitre", "chapter", p.chapters.map((x) => option(x.id, x.title ?? x.id, c.id)).join("")) +
+        select("Lieu de la scène", "location", option("", "À définir", sceneLocation(p, s)?.id) +
+            p.entities
+                .filter((en) => en.kind === "place")
+                .map((en) => option(en.id, en.name, sceneLocation(p, s)?.id))
+                .join("")) +
+        select("Rôle dans l’intrigue", "beat", option("", "À définir", s.beat) +
+            Object.entries(beats)
+                .map(([id, label]) => option(id, label, s.beat))
+                .join("")) +
+        arcChoices(s.arcIds) +
         `<fieldset class="participants"><legend>Événements présentés dans cette scène</legend><p class="small muted">Réutiliser un événement le raconte à nouveau sans réappliquer ses effets.</p>${p.events.map((ev) => `<label class="checkbox"><input type="checkbox" name="presentations" value="${ev.id}" ${s.presentations?.some((pr) => pr.event === ev.id) ? "checked" : ""}>${e(ev.title)}</label>`).join("") || '<p class="muted small">Aucun événement déclaré.</p>'}</fieldset>` +
         `<fieldset class="participants"><legend>Présences dans la scène</legend>${p.entities.map((en) => `<label class="checkbox"><input type="checkbox" name="participants" value="${en.id}" ${s.participants?.includes(en.id) ? "checked" : ""}>${e(en.name)}</label>`).join("") || '<p class="muted">Ajoutez d’abord des fiches dans Univers.</p>'}</fieldset><div class="actions">${btn("↑ Monter", "move-scene", "secondary small", `data-id="${id}" data-direction="-1"`)}${btn("↓ Descendre", "move-scene", "secondary small", `data-id="${id}" data-direction="1"`)}${btn("Supprimer la scène", "delete-scene", "danger quiet", `data-id="${id}"`)}</div>`, "Enregistrer", (data) => {
         modal.close();
@@ -371,6 +409,9 @@ function editScene(id) {
             s.title = String(data.get("title"));
             s.storyTime = Number(data.get("storyTime"));
             s.participants = data.getAll("participants").map(String);
+            s.location = String(data.get("location")) || undefined;
+            s.beat = String(data.get("beat")) || undefined;
+            s.arcIds = data.getAll("arcIds").map(String);
             s.presentations = data
                 .getAll("presentations")
                 .map((value) => ({ scene: s.id, event: String(value) }));
@@ -386,11 +427,11 @@ function editScene(id) {
         });
     });
 }
-function editEntity(id) {
+function editEntity(id, preset = "character") {
     const p = project(), en = p.entities.find((x) => x.id === id);
     openDialog(en ? "Une présence dans votre monde" : "Une nouvelle fiche", field("Nom", "name", en?.name ?? "", "text", "required maxlength=160") +
         select("Type de fiche", "kind", Object.entries(kinds)
-            .map(([k, v]) => option(k, v, en?.kind ?? "character"))
+            .map(([k, v]) => option(k, v, en?.kind ?? preset))
             .join("")) +
         area("Description, apparence, personnalité…", "description", en?.description ?? "", 'rows="8" placeholder="Ce qui rend cette présence unique. Les états qui changent au fil du récit sont suivis dans Continuité."') +
         (en
@@ -410,6 +451,12 @@ function editEntity(id) {
         });
     });
 }
+function arcChoices(ids = []) {
+    return `<fieldset class="participants"><legend>Intrigues reliées</legend>${project()
+        .arcs.map((a) => `<label class="checkbox"><input type="checkbox" name="arcIds" value="${e(a.id)}" ${ids.includes(a.id) ? "checked" : ""}>${e(a.title)}</label>`)
+        .join("") ||
+        '<p class="muted small">Créez un fil dans Intrigues & notes, puis reliez-le ici.</p>'}</fieldset>`;
+}
 function editArc(id) {
     const p = project(), a = p.arcs.find((x) => x.id === id);
     openDialog(a ? "Le fil d’une intrigue" : "Une nouvelle intrigue", field("Titre / question narrative", "title", a?.title ?? "", "text", "required") +
@@ -418,6 +465,7 @@ function editArc(id) {
             .join("")) +
         area("Enjeux et étapes envisagées", "description", a?.description ?? "", 'rows="4"') +
         area("Résolution envisagée (réservée à l’auteur)", "resolution", a?.resolution ?? "", 'rows="3"') +
+        `<fieldset class="participants"><legend>Scènes qui font avancer ce fil</legend><p class="small muted">Ces liens sont partagés avec le manuscrit et la frise.</p>${p.chapters.map((c) => `<strong class="chapter-check-title">${e(c.title)}</strong>${c.scenes.map((s) => `<label class="checkbox"><input type="checkbox" name="scenes" value="${e(s.id)}" ${a && s.arcIds?.includes(a.id) ? "checked" : ""}>${e(s.title)}</label>`).join("")}`).join("")}</fieldset>` +
         (a
             ? btn("Supprimer l’intrigue", "delete-arc", "danger quiet", `data-id="${id}"`)
             : ""), "Enregistrer", (data) => {
@@ -429,10 +477,17 @@ function editArc(id) {
                 description: String(data.get("description")),
                 resolution: String(data.get("resolution")),
             };
+            const arcId = a?.id ?? uid("ARC");
             if (a)
                 Object.assign(a, value);
             else
-                p.arcs.push({ id: uid("ARC"), ...value });
+                p.arcs.push({ id: arcId, ...value });
+            const selected = data.getAll("scenes").map(String);
+            allScenes(p).forEach((s) => {
+                s.arcIds = (s.arcIds ?? []).filter((x) => x !== arcId);
+                if (selected.includes(s.id))
+                    s.arcIds.push(arcId);
+            });
         });
     });
 }
@@ -479,10 +534,10 @@ function readRows() {
 function rowMarkup() {
     const p = project();
     return eventRows
-        .map((r, i) => `<fieldset class="change-row"><legend>Changement ${i + 1}</legend><div class="form-grid"><label class="field">Nature<select data-row-field="layer">${option("world", "Fait du monde", r.layer)}${option("belief", "Croyance d’un personnage", r.layer)}${option("reader", "Révélation au lecteur", r.layer)}</select></label><label class="field">Sujet<select data-row-field="subject" required><option value="">Choisir…</option>${p.entities.map((en) => option(en.id, en.name, r.subject)).join("")}</select></label><label class="field">Propriété libre<input data-row-field="property" value="${e(r.property)}" required placeholder="vivant, tenue, inventaire…"></label><label class="field">Opération<select data-row-field="mode">${option("set", "Attribuer une valeur", r.mode)}${option("end", "Terminer l’information", r.mode)}${option("add", "Ajouter à une collection", r.mode)}${option("remove", "Retirer d’une collection", r.mode)}</select></label><label class="field">Valeur<input data-row-field="value" value="${e(r.value)}" placeholder="Ex. manteau vert, true, 42"></label><label class="field">Croyance : qui la détient ?<select data-row-field="holder">${option("", "Aucun", r.holder)}${p.entities
+        .map((r, i) => `<fieldset class="change-row"><legend>Changement ${i + 1}</legend><div class="layer-explainer ${r.layer}">${r.layer === "world" ? "◉ Réalité : ce qui devient vrai dans l’univers." : r.layer === "belief" ? "◈ Croyance : ce que pense un personnage, même s’il se trompe." : "◇ Lecteur : ce qui est révélé dans le livre, sans changer le monde."}</div><div class="form-grid"><label class="field">Nature<select data-row-field="layer">${option("world", "Fait du monde", r.layer)}${option("belief", "Croyance d’un personnage", r.layer)}${option("reader", "Révélation au lecteur", r.layer)}</select></label><label class="field">Sujet<select data-row-field="subject" required><option value="">Choisir…</option>${p.entities.map((en) => option(en.id, en.name, r.subject)).join("")}</select></label><label class="field">Propriété libre<input data-row-field="property" value="${e(r.property)}" required placeholder="vivant, tenue, inventaire…"></label><label class="field">Opération<select data-row-field="mode">${option("set", "Attribuer une valeur", r.mode)}${option("end", "Terminer l’information", r.mode)}${option("add", "Ajouter à une collection", r.mode)}${option("remove", "Retirer d’une collection", r.mode)}</select></label><label class="field" ${r.mode === "end" ? "hidden" : ""}>Nouvelle valeur<input list="truth-values" data-row-field="value" value="${e(r.value)}" placeholder="Ex. manteau vert, true, 42"></label><label class="field" ${r.layer === "belief" ? "" : "hidden"}>Croyance : qui la détient ?<select data-row-field="holder">${option("", "Aucun", r.holder)}${p.entities
         .filter((en) => en.kind === "character")
         .map((en) => option(en.id, en.name, r.holder))
-        .join("")}</select></label><label class="field">Fin du fait temporaire (facultatif)<input type="number" step="any" data-row-field="until" value="${e(r.until)}" placeholder="Moment de fin"></label></div>${btn("Retirer ce changement", "remove-row", "quiet danger small", `data-index="${i}"`)}</fieldset>`)
+        .join("")}</select></label><label class="field" ${r.layer !== "reader" && r.mode === "set" ? "" : "hidden"}>Fin du fait temporaire (facultatif)<input type="number" step="any" data-row-field="until" value="${e(r.until)}" placeholder="Moment de fin"></label></div>${btn("Retirer ce changement", "remove-row", "quiet danger small", `data-index="${i}"`)}</fieldset>`)
         .join("");
 }
 function editEvent(id) {
@@ -519,7 +574,7 @@ function editEvent(id) {
                 until: "",
             },
         ];
-    openDialog(ev ? "Un événement du récit" : "Un nouvel événement", `<div class="notice">Un événement change le monde une seule fois. Déclarez séparément ce qu’un personnage croit et ce qui est révélé au lecteur.</div><div class="form-grid">${field("Titre", "title", ev?.title ?? "", "text", "required")}${field("Moment dans l’histoire", "storyTime", ev?.storyTime ?? s?.storyTime ?? 1, "number", 'required step="any"')}${select("Statut éditorial", "status", ["draft", "canon", "plan"].map((st) => option(st, statuses[st], ev?.status ?? "draft")).join(""))}${select("Texte source", "source", sceneOptions(ev?.source?.scene ?? s?.id, "Déclaration indépendante"))}${select("Révélation au lecteur dans…", "revealedIn", sceneOptions(ev?.revealedIn ?? s?.id, "Non révélé"))}</div><div id="event-rows">${rowMarkup()}</div>${btn(icon("plus") + "Ajouter un changement", "add-row", "secondary")}<p class="muted small">Les valeurs true, false et les nombres sont reconnus. Le texte libre reste du texte. Une fin temporaire retire l’information, sans restaurer l’ancienne valeur.</p>${ev ? btn("Supprimer cet événement", "delete-event", "danger quiet", `data-id="${id}"`) : ""}`, "Enregistrer l’événement", (data) => {
+    openDialog(ev ? "Un événement du récit" : "Un nouvel événement", `<div class="notice">Un événement change le monde une seule fois. Déclarez séparément ce qu’un personnage croit et ce qui est révélé au lecteur.</div><div class="form-grid">${field("Titre", "title", ev?.title ?? "", "text", "required")}${field("Moment dans l’histoire", "storyTime", ev?.storyTime ?? s?.storyTime ?? 1, "number", 'required step="any"')}${select("Statut éditorial", "status", ["draft", "canon", "plan"].map((st) => option(st, statuses[st], ev?.status ?? "draft")).join(""))}${select("Texte source", "source", sceneOptions(ev ? (ev.source?.scene ?? "") : s?.id, "Déclaration indépendante"))}${select("Révélation au lecteur dans…", "revealedIn", sceneOptions(ev ? (ev.revealedIn ?? "") : s?.id, "Non révélé"))}</div><label class="checkbox milestone-choice"><input name="milestone" type="checkbox" ${ev?.milestone ? "checked" : ""}> ◆ Jalon marquant : afficher sur la frise macro</label>${arcChoices(ev?.arcIds)}<datalist id="truth-values"><option value="true">Oui / vrai</option><option value="false">Non / faux</option></datalist><div id="event-rows">${rowMarkup()}</div>${btn(icon("plus") + "Ajouter un changement", "add-row", "secondary")}<p class="muted small">Les valeurs true, false et les nombres sont reconnus. Le texte libre reste du texte. Une fin temporaire retire l’information, sans restaurer l’ancienne valeur.</p>${ev ? btn("Supprimer cet événement", "delete-event", "danger quiet", `data-id="${id}"`) : ""}`, "Enregistrer l’événement", (data) => {
         readRows();
         const time = Number(data.get("storyTime"));
         const changes = [], beliefs = [];
@@ -572,6 +627,8 @@ function editEvent(id) {
             changes,
             beliefs,
             readerReveals,
+            milestone: data.get("milestone") === "on",
+            arcIds: data.getAll("arcIds").map(String),
             revealedIn: String(data.get("revealedIn")) || undefined,
             ...(sourceScene && sourceChapter
                 ? {
@@ -596,24 +653,24 @@ function editEvent(id) {
     });
 }
 function removeScenes(ids) {
-    const p = project();
-    p.chapters.forEach((c) => (c.scenes = c.scenes.filter((s) => !ids.includes(s.id))));
-    p.events = p.events.filter((ev) => !ev.source || !ids.includes(ev.source.scene));
-    p.events.forEach((ev) => {
-        if (ev.revealedIn && ids.includes(ev.revealedIn))
-            ev.revealedIn = undefined;
-    });
-    p.notes.forEach((n) => {
-        if (n.revealedIn && ids.includes(n.revealedIn)) {
-            n.revealedIn = undefined;
-            n.scope = "author";
-        }
-    });
-    const eventIds = new Set(p.events.map((ev) => ev.id));
-    p.chapters
-        .flatMap((c) => c.scenes)
-        .forEach((s) => (s.presentations = s.presentations?.filter((pr) => eventIds.has(pr.event))));
+    deleteScenes(project(), ids);
     sceneId = "";
+}
+function deleteWithUndo(fn) {
+    deletionUndo.capture(project(), () => {
+        fn();
+        changed();
+    });
+    save();
+    render();
+}
+function requireUniverse() {
+    if (universeReadiness(project()).ready)
+        return true;
+    route = "overview";
+    render();
+    flash("Ajoutez d’abord au moins un personnage et un lieu dans l’Univers.");
+    return false;
 }
 function move(arr, index, delta) {
     const dest = index + delta;
@@ -660,7 +717,77 @@ document.addEventListener("click", (event) => {
         return;
     event.preventDefault();
     const action = el.dataset.action, id = el.dataset.id, p = project();
+    if (["new-chapter", "new-scene", "new-arc", "new-event"].includes(action ?? "") &&
+        !requireUniverse())
+        return;
     const actions = {
+        "guided-character": () => {
+            route = "world";
+            render();
+            editEntity(undefined, "character");
+        },
+        "guided-place": () => {
+            route = "world";
+            render();
+            editEntity(undefined, "place");
+        },
+        "show-world": () => {
+            route = "world";
+            render();
+        },
+        "show-plot": () => {
+            route = "plot";
+            render();
+        },
+        "open-writing": () => {
+            route = "write";
+            writingMode = "board";
+            render();
+        },
+        "writing-board": () => {
+            save();
+            route = "write";
+            writingMode = "board";
+            render();
+        },
+        "timeline-order": () => {
+            timelineOrder = id;
+            render();
+        },
+        "pan-timeline": () => {
+            const sc = document.querySelector(".timeline-scroll");
+            sc?.scrollBy({
+                left: Number(id) * sc.clientWidth * 0.7,
+                behavior: "smooth",
+            });
+        },
+        "inspect-chapter": () => {
+            timelineChapter = id;
+            const c = p.chapters.find((c) => c.id === id);
+            sceneId = c?.scenes[0]?.id ?? "";
+            render();
+        },
+        "inspect-scene": () => {
+            sceneId = id;
+            timelineChapter = currentChapter()?.id ?? "";
+            render();
+        },
+        "scene-continuity": () => {
+            save();
+            sceneId = id;
+            timelineChapter = currentChapter()?.id ?? "";
+            route = "continuity";
+            render();
+        },
+        "undo-delete": () => {
+            const restored = deletionUndo.restore(p);
+            if (restored)
+                mutate(() => {
+                    library.projects[library.projects.indexOf(p)] = restored;
+                });
+            else
+                flash("Le récit a changé : utilisez votre sauvegarde pour restaurer une version antérieure.");
+        },
         "new-project": createStory,
         close: () => modal.close(),
         library: () => {
@@ -686,6 +813,8 @@ document.addEventListener("click", (event) => {
         nav: () => {
             save();
             route = id;
+            if (route === "write")
+                writingMode = "board";
             search = "";
             render();
             window.scrollTo(0, 0);
@@ -694,6 +823,9 @@ document.addEventListener("click", (event) => {
         "new-chapter": () => editChapter(),
         "edit-chapter": () => editChapter(id),
         "open-chapter": () => {
+            if (!requireUniverse())
+                return;
+            writingMode = "editor";
             const c = p.chapters.find((c) => c.id === id);
             if (!c.scenes.length) {
                 mutate(() => {
@@ -716,11 +848,14 @@ document.addEventListener("click", (event) => {
                 c.scenes.push(s);
                 sceneId = s.id;
                 route = "write";
+                writingMode = "board";
             }
         }),
         "select-scene": () => {
             save();
             sceneId = id;
+            route = "write";
+            writingMode = "editor";
             preview = false;
             render();
         },
@@ -784,14 +919,14 @@ document.addEventListener("click", (event) => {
         "delete-chapter": () => {
             modal.close();
             const c = p.chapters.find((c) => c.id === id);
-            confirm("Supprimer ce chapitre ?", "Ses scènes et les événements qui en proviennent seront supprimés. Cette action ne dispose pas d’annulation.", () => mutate(() => {
+            confirm("Supprimer ce chapitre ?", "Ses scènes et leurs événements sources seront retirés. Les notes liées redeviennent privées. Vous pourrez annuler avant votre prochaine modification.", () => deleteWithUndo(() => {
                 removeScenes(c.scenes.map((s) => s.id));
                 p.chapters = p.chapters.filter((c) => c.id !== id);
             }));
         },
         "delete-scene": () => {
             modal.close();
-            confirm("Supprimer cette scène ?", "Le texte et ses événements seront supprimés. Les notes lecteur liées redeviendront réservées à l’auteur.", () => mutate(() => removeScenes([id])));
+            confirm("Supprimer cette scène ?", `« ${e(allScenes(p).find((s) => s.id === id)?.title)} » et ses ${p.events.filter((ev) => ev.source?.scene === id).length} événement(s) sources seront retirés. Les notes liées redeviennent privées. Vous pourrez annuler avant votre prochaine modification.`, () => deleteWithUndo(() => removeScenes([id])));
         },
         "delete-entity": () => {
             const referenced = p.events.some((ev) => [
@@ -807,6 +942,10 @@ document.addEventListener("click", (event) => {
             modal.close();
             confirm("Supprimer cette fiche ?", "La description sera supprimée. Le texte du manuscrit sera conservé.", () => mutate(() => {
                 p.entities = p.entities.filter((en) => en.id !== id);
+                allScenes(p).forEach((s) => {
+                    if (s.location === id)
+                        s.location = undefined;
+                });
                 p.chapters
                     .flatMap((c) => c.scenes)
                     .forEach((s) => (s.participants = s.participants?.filter((x) => x !== id)));
@@ -823,7 +962,7 @@ document.addEventListener("click", (event) => {
         },
         "delete-arc": () => {
             modal.close();
-            confirm("Supprimer cette intrigue ?", "Cette intention et sa résolution seront retirées du carnet.", () => mutate(() => (p.arcs = p.arcs.filter((a) => a.id !== id))));
+            confirm("Supprimer cette intrigue ?", "Cette intention et sa résolution seront retirées du carnet.", () => mutate(() => removeArc(p, id)));
         },
         "delete-note": () => {
             modal.close();
@@ -940,6 +1079,26 @@ document.addEventListener("input", (event) => {
 });
 document.addEventListener("change", (event) => {
     const el = event.target;
+    if (el.dataset.rowField === "layer" || el.dataset.rowField === "mode") {
+        readRows();
+        eventRows.forEach((r) => {
+            if (r.layer === "reader" || r.mode !== "set")
+                r.until = "";
+            if (r.layer !== "belief")
+                r.holder = "";
+        });
+        modal.querySelector("#event-rows").innerHTML = rowMarkup();
+    }
+    if (el.id === "timeline-zoom") {
+        timelineZoom = Number(el.value);
+        const left = document.querySelector(".timeline-scroll")?.scrollLeft ?? 0;
+        render();
+        document.querySelector(".timeline-scroll")?.scrollTo({ left });
+    }
+    if (el.id === "continuity-scope") {
+        continuityScope = el.value;
+        render();
+    }
     if (el.id === "context-view") {
         view = el.value;
         document.querySelector("#context-container").innerHTML = contextPanel();
@@ -950,7 +1109,10 @@ document.addEventListener("change", (event) => {
     }
     if (el.id === "include-draft") {
         includeDraft = el.checked;
-        document.querySelector("#context-container").innerHTML = contextPanel();
+        if (route === "continuity")
+            render();
+        else
+            document.querySelector("#context-container").innerHTML = contextPanel();
     }
     if (el.id === "scene-complete") {
         const s = currentScene();

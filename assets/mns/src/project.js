@@ -1,5 +1,5 @@
-import { validateStory } from "./compiler.js";
-import { parseJson } from "./json.js";
+import { validateStory } from "./compiler.js?v=ea1cead32592";
+import { parseJson } from "./json.js?v=ea1cead32592";
 export const uid = (prefix) => `${prefix}_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
 export const wordCount = (text) => (text.trim().match(/\S+/gu) ?? []).length;
 export const projectWords = (p) => p.chapters.reduce((sum, c) => sum + c.scenes.reduce((n, s) => n + wordCount(s.text ?? ""), 0), 0);
@@ -190,6 +190,17 @@ export function demoProject() {
             status: "open",
         },
     ];
+    const demoScenes = p.chapters.flatMap((c) => c.scenes);
+    demoScenes.forEach((s, i) => {
+        s.arcIds = ["ARC_LETTER"];
+        s.location = "CITY";
+        s.beat = i === 0 ? "setup" : i === 1 ? "turn" : "complication";
+    });
+    p.events
+        .filter((ev) => ev.id === "EV_DEATH" || ev.id === "EV_LETTER")
+        .forEach((ev) => {
+        ev.milestone = true;
+    });
     return p;
 }
 function obj(v, path) {
@@ -279,6 +290,13 @@ export function parseProject(text) {
                         storyTime: num(s.storyTime, "Moment"),
                         version: str(s.version, "Version", "1"),
                         status: one(s.status, ["draft", "complete"], "draft"),
+                        ...(s.location ? { location: str(s.location, "Lieu") } : {}),
+                        arcIds: list(s.arcIds, "Intrigues").map((v) => str(v, "Intrigue")),
+                        ...(s.beat
+                            ? {
+                                beat: one(s.beat, ["setup", "complication", "turn", "resolution"], "setup"),
+                            }
+                            : {}),
                         participants: list(s.participants, "Participants").map((v) => str(v, "Participant")),
                         presentations: list(s.presentations, "Présentations").map((v) => {
                             const pr = obj(v, "Présentation");
@@ -299,6 +317,8 @@ export function parseProject(text) {
                 title: str(e.title, "Titre"),
                 storyTime: num(e.storyTime, "Moment"),
                 status: one(e.status, ["canon", "draft", "plan"], "canon"),
+                ...(e.milestone === true ? { milestone: true } : {}),
+                arcIds: list(e.arcIds, "Intrigues").map((v) => str(v, "Intrigue")),
                 changes: list(e.changes, "Faits").map(change),
                 beliefs: list(e.beliefs, "Croyances").map((v) => {
                     const b = obj(v, "Croyance");
