@@ -10,6 +10,198 @@
   --green: #244f45;
   --serif: "Libre Caslon Display", Georgia, serif;
 }
+[hidden] {
+  display: none !important;
+}
+.workspace .loop,
+.workspace .nested .loop {
+  border-left: 0;
+  padding-left: 36px;
+  position: relative;
+}
+.workspace .block {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+.workspace .block.selected {
+  box-shadow: none;
+}
+.workspace .block > .block-card {
+  border: 1px solid var(--phase);
+  border-left-width: 4px;
+  border-radius: 9px;
+  background: var(--tint);
+}
+.workspace .block.selected > .block-card {
+  box-shadow: 0 0 0 2px var(--phase);
+}
+.loop-title-rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 29px;
+}
+.sticky-loop-title {
+  position: sticky;
+  top: 12px;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-height: calc(100dvh - 230px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 12px 6px;
+  width: 29px;
+  border: 0;
+  border-radius: 7px;
+  background: #e2e9db;
+  color: #365344;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sticky-loop-title span {
+  font-size: 9px;
+  color: #63775d;
+  margin-bottom: 9px;
+}
+.sticky-loop-title:hover {
+  background: #cfdcc5;
+}
+.block-timing {
+  font-size: 10px;
+  color: #657363;
+  margin-bottom: 12px;
+}
+.block-changes p {
+  font-size: 11px;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: #ffffff90;
+  border-radius: 5px;
+}
+.workspace .left-panel {
+  overflow: hidden;
+}
+.workspace .world-panel {
+  overflow: auto;
+  min-height: 0;
+}
+.character-state {
+  border: 1px solid #d5dece;
+  border-radius: 8px;
+  background: #fafcf5;
+  margin: 10px 0;
+}
+.character-state summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px;
+}
+.character-state summary strong {
+  flex: 1;
+}
+.character-state .avatar {
+  width: 23px;
+  height: 23px;
+  font-size: 11px;
+}
+.state-content {
+  padding: 0 10px 12px;
+}
+.state-content h4 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 12px 0 7px;
+  color: #697c60;
+}
+.inventory-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.property-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  margin: 6px 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.state-edit {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.state-edit button {
+  padding: 5px 7px;
+  font-size: 9px;
+}
+.state-heading {
+  font-size: 12px;
+  margin: 20px 0 5px;
+}
+.state-warning {
+  background: #fbebde;
+  border: 1px solid #d6a480;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 11px;
+  margin: 10px 0;
+  color: #864b27;
+}
+.state-warning p {
+  margin: 7px 0;
+}
+.open-choice {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: #edf2e6;
+  border-radius: 7px;
+}
+.quick-effects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin: 12px 0;
+}
+.quick-effects button {
+  font-size: 10px;
+  padding: 8px;
+  text-align: left;
+}
+.consequence-preview {
+  background: #eef2e7;
+  padding: 12px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+.consequence-preview summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.consequence-preview p {
+  overflow-wrap: anywhere;
+}
+.consequence-preview h4 {
+  margin-bottom: 5px;
+}
+.inspector .idea-grid {
+  max-height: 290px;
+  overflow: auto;
+  margin-bottom: 13px;
+}
+.workspace .transport-main #readout {
+  min-width: 85px;
+  max-width: 150px;
+  overflow-wrap: anywhere;
+}
 * {
   box-sizing: border-box;
 }

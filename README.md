@@ -16,15 +16,19 @@ se définissent à l’état zéro. Dans un bloc, déclarez un changement de rel
 une entrée/sortie du récit ou une appartenance à un groupe.
 
 **Lire** anime un curseur du haut vers le bas ; le sens inverse et le curseur manuel
-permettent de revoir les états antérieurs. Les effets d’un bloc s’appliquent à son
-entrée, avant ses sous-boucles. Le texte libre ne modifie pas les faits à votre insu.
+permettent de revoir les états antérieurs. La chronologie est demandée au premier
+accès : T = 0 est le début du roman, en haut de la frise. Chaque passage a une durée.
+Ses effets s’appliquent à sa fin, avant ses sous-boucles. Le texte libre ne modifie
+pas les faits à votre insu. Les titres verticaux des boucles parentes restent visibles.
 
-Le dictionnaire propose quatre directions par étape et des familles de relations.
-Les amorces sont éditables, non validées automatiquement. **Pages & cases** transforme
-les blocs feuilles en un découpage de 1 à 6 cases par page, exportable en Markdown.
+Le dictionnaire propose douze directions par étape, soit 48 amorces personnalisables.
+Il n’y a plus de découpage imposé en pages ou cases : tous les blocs sont exportables
+en Markdown. Les inventaires et propriétés suivent les changements déclarés : gain,
+perte, don, nouvelle valeur ou retrait. Chaque liste possède une saisie libre visible.
+Un transfert impossible est signalé sans créer de stock négatif.
 Le préremplissage ne remplace jamais un texte déjà écrit.
 
-**Réglages** : titre, genre, tonalité, public, intention centrale, mise en pages,
+**Réglages** : titre, genre, tonalité, public, intention centrale, chronologie,
 import JSON et exemple de mariage/naissance. **Repères de cohérence** aide à préciser
 désirs, intervenants et changements ; ce n’est pas une analyse littéraire automatique.
 

@@ -12,7 +12,8 @@ de livres suivie d’écrans chapitres/scènes. Aucune connexion ni facturation.
   projet, pas une reproduction exhaustive de la théorie de Neil Cohn. Sa VNG
   comporte d’autres possibilités, dont la prolongation et des catégories optionnelles.
   Référence : https://www.visuallanguagelab.com/P/2019.LC.NC.pdf
-- Le temps va du haut vers le bas. Un bloc prend effet à son entrée, puis ses
+- Le temps va du haut vers le bas. Chaque passage a une durée configurable. T = 0 est le début du roman, demandé
+  au premier accès. Un bloc prend effet à la fin de son passage, puis ses
   sous-boucles sont traversées, puis le bloc suivant. Un bloc parent est une
   intention macro ; ses sous-blocs la détaillent. Pas de seconde application du
   changement parent à la sortie. Ne pas redéclarer le même changement pour le détailler.
@@ -25,9 +26,13 @@ de livres suivie d’écrans chapitres/scènes. Aucune connexion ni facturation.
   Aucun lien romantique n’est déduit d’un nom, sexe ou glisser-déposer.
 - Les groupes et factions réunissent plusieurs personnes à l’état zéro ; les
   changements d’appartenance se déclarent dans les blocs.
-- Les feuilles deviennent des cases, regroupées en pages de 1 à 6 cases. Le texte
-  parent n’est pas dupliqué. Les amorces sont des canevas à personnaliser, pas du
-  texte littéraire généré, ni des faits déduits automatiquement.
+- Aucun découpage automatique en pages/cases. Tous les blocs sont exportés en Markdown.
+  Le dictionnaire contient 48 amorces éditables. Les titres des ancêtres sont visibles
+  dans des colonnes verticales fixes pendant le défilement, sans traits de boucle.
+- Inventaires et propriétés sont reconstruits avec les relations. Gains, pertes et
+  transferts utilisent des quantités entières positives ; les transferts sont atomiques.
+  Un stock insuffisant est signalé et le changement ignoré. Les noms sont libres,
+  normalisés pour éviter les doublons. Retirer une propriété signifie non documentée.
 
 ## Minimum utile
 
@@ -54,7 +59,7 @@ aucun appel distant. Les aides actuelles fonctionnent sans modèle.
 
 Première intégration recommandée : le bouton « Comparer les directions » enverrait
 seulement l’intention de la boucle, son bloc, les désirs des personnages présents,
-les relations reconstruites et les quatre candidats du dictionnaire. Une requête
+les relations reconstruites et un petit ensemble de candidats du dictionnaire. Une requête
 groupée, une Choice de compatibilité par candidat (compatible / contradiction /
 informations insuffisantes), puis des scores indépendants d’apport à l’objectif.
 Les probabilités ne seraient pas présentées comme une mesure du talent littéraire.

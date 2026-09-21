@@ -1,5 +1,5 @@
-import { validateStory } from "./compiler.js?v=013e2e087482";
-import { parseJson } from "./json.js?v=013e2e087482";
+import { validateStory } from "./compiler.js?v=528a9284a674";
+import { parseJson } from "./json.js?v=528a9284a674";
 export const uid = (prefix) => `${prefix}_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
 export const wordCount = (text) => (text.trim().match(/\S+/gu) ?? []).length;
 export const projectWords = (p) => p.chapters.reduce((sum, c) => sum + c.scenes.reduce((n, s) => n + wordCount(s.text ?? ""), 0), 0);

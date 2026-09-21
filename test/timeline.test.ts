@@ -11,7 +11,7 @@ import {
   deleteGroup,
   parseTimeline,
   outline,
-  panels,
+  passages,
   markdown,
   warnings,
   id,
@@ -123,7 +123,7 @@ test("Archive rejects wrong phases, excessive nesting, duplicates and dangling r
     (t: any) => t.loops[0].blocks.reverse(),
     (t: any) => t.characters.push(t.characters[0]),
     (t: any) => t.loops[0].blocks[0].cast.push("missing"),
-    (t: any) => (t.settings.panelsPerPage = 0),
+    (t: any) => (t.settings.chronology.defaultDuration = 0),
     (t: any) => (t.characters[0].color = "red;position:fixed"),
     (t: any) =>
       t.loops[0].blocks[0].effects.push({ id: id(), type: "unknown" }),
@@ -140,15 +140,15 @@ test("Archive rejects wrong phases, excessive nesting, duplicates and dangling r
   b.loops.push(emptyTimeline().loops[0]);
   assert.throws(() => parseTimeline(JSON.stringify(t)));
 });
-test("Neutral suggestions create no facts; page compilation only includes leaf blocks", () => {
+test("Neutral suggestions create no facts; Markdown preserves every block without pages", () => {
   const t = demoTimeline(),
     before = JSON.stringify(stateAt(t, 100));
   const b = t.loops[0].blocks[0];
   b.text = outline(t, b);
   assert.equal(JSON.stringify(stateAt(t, 100)), before);
-  assert.equal(panels(t).length, 7);
-  assert.match(markdown(t), /Page 2/);
-  assert.ok(!panels(t).some((p) => p.block.id === t.loops[0].blocks[1].id));
+  assert.equal(passages(t).length, 8);
+  assert.doesNotMatch(markdown(t), /Page 2|Case 1/);
+  assert.ok(passages(t).some((p) => p.block.id === t.loops[0].blocks[1].id));
   assert.match(
     outline(emptyTimeline(), emptyTimeline().loops[0].blocks[0]),
     /personnage principal/,
@@ -178,15 +178,15 @@ test("Nested loops inherit cast and place, never parent effects or text", () => 
   child.blocks[0].cast.pop();
   assert.equal(parent.cast.length, 2);
 });
-test("Generated outlines stay marked as proposals in pages and Markdown", () => {
+test("Generated outlines stay marked as proposals in Markdown", () => {
   const t = emptyTimeline(),
     b = t.loops[0].blocks[0];
   b.text = outline(t, b);
   b.generated = true;
-  assert.equal(panels(t)[0].drafted, false);
+  assert.equal(passages(t)[0].drafted, false);
   assert.match(markdown(t), /Proposition à écrire/);
   b.generated = false;
-  assert.equal(panels(t)[0].drafted, true);
+  assert.equal(passages(t)[0].drafted, true);
 });
 test("Duplicate JSON keys are rejected in the new archive too", () => {
   const raw = JSON.stringify(emptyTimeline()).replace(

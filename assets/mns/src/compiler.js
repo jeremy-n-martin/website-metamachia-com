@@ -1,5 +1,5 @@
-import { key, } from "./model.js?v=013e2e087482";
-import { sceneArcs, sceneLocation } from "./narrative.js?v=013e2e087482";
+import { key, } from "./model.js?v=528a9284a674";
+import { sceneArcs, sceneLocation } from "./narrative.js?v=528a9284a674";
 const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 export function validateStory(story) {
     const issues = [];

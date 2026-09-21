@@ -1,5 +1,5 @@
-import { allScenes, universeReadiness, sceneLocation, sceneEvents, sceneArcs, eventArcs, } from "../src/narrative.js?v=013e2e087482";
-import { wordCount } from "../src/project.js?v=013e2e087482";
+import { allScenes, universeReadiness, sceneLocation, sceneEvents, sceneArcs, eventArcs, } from "../src/narrative.js?v=528a9284a674";
+import { wordCount } from "../src/project.js?v=528a9284a674";
 const e = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const button = (label, action, id = "", cls = "secondary small") => `<button type="button" class="btn ${cls}" data-action="${action}" data-id="${e(id)}">${e(label)}</button>`;
 export const beats = {

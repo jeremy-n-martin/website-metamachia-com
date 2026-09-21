@@ -1,5 +1,5 @@
-import { parseJson } from "./json.js?v=013e2e087482";
-/** A chronological, recursive outline. Parent effects occur at block entry. */
+import { parseJson } from "./json.js?v=528a9284a674";
+/** Ordered passages: baseline at t=0, effects at each passage's end, then children. */
 export const PHASES = ["E", "I", "P", "R"];
 export const LABELS = {
     E: "Mise en place",
@@ -16,6 +16,38 @@ export const HINTS = {
 export const MAX_DEPTH = 7;
 export const KEY = "metamachia.timeline.v1";
 export const id = () => globalThis.crypto.randomUUID();
+export const DEFAULT_CHRONOLOGY = {
+    origin: "Le début du roman",
+    unit: "jour",
+    defaultDuration: 1,
+    configured: false,
+};
+export const OBJECTS = [
+    "Épée légendaire",
+    "Clé ancienne",
+    "Lettre scellée",
+    "Carte du royaume",
+    "Potion de soin",
+    "Pièce d’or",
+    "Téléphone",
+    "Carnet",
+    "Preuve compromettante",
+    "Photographie",
+    "Médicament",
+    "Bijou de famille",
+];
+export const PROPERTIES = [
+    "Santé",
+    "Blessure",
+    "Métier",
+    "Statut",
+    "Pouvoir",
+    "Lieu actuel",
+    "Objectif",
+    "Émotion",
+    "Secret",
+    "Réputation",
+];
 export const RELATIONS = [
     {
         category: "Vie sociale",
@@ -108,6 +140,119 @@ export const IDEAS = {
         },
     ],
 };
+IDEAS.E.push({
+    title: "Un objet convoité",
+    prompt: "Présenter l’objet désiré par {noms}{lieu}. Pourquoi vaut-il autant à leurs yeux ?",
+}, {
+    title: "Un quotidien singulier",
+    prompt: "Montrer une habitude de {noms}{lieu}. Un détail révèle une règle de ce monde.",
+}, {
+    title: "Une dette ancienne",
+    prompt: "Rappeler ce que doit {noms}{lieu}. À qui, depuis quand, et avec quelle contrepartie ?",
+}, {
+    title: "Une absence",
+    prompt: "Faire ressentir un manque dans la vie de {noms}{lieu}. Un geste en dit plus qu’une explication.",
+}, {
+    title: "Une rivalité",
+    prompt: "Placer {noms} face à un désir concurrent{lieu}. Que refuse-t-on de partager ?",
+}, {
+    title: "Un lieu interdit",
+    prompt: "Présenter à {noms} un lieu qu’il ne faut pas franchir{lieu}. Établir la règle avant de la briser.",
+}, {
+    title: "Un héritage",
+    prompt: "Un héritage arrive entre les mains de {noms}{lieu}. Préciser l’objet reçu et la responsabilité associée.",
+    action: "gain",
+}, {
+    title: "Un pouvoir latent",
+    prompt: "Faire entrevoir une capacité de {noms}{lieu}. Définir ce qu’elle permet et sa limite.",
+    action: "property",
+});
+IDEAS.I.push({
+    title: "Le gain d’un objet",
+    prompt: "Un objet parvient à {noms}{lieu}. Choisir qui le reçoit et pourquoi ce gain ouvre une possibilité.",
+    action: "gain",
+}, {
+    title: "Un vol",
+    prompt: "Un objet disparaît des affaires de {noms}{lieu}. Sa perte impose une action immédiate.",
+    action: "loss",
+}, {
+    title: "Un ultimatum",
+    prompt: "Imposer une échéance à {noms}{lieu}. Que se passera-t-il sans décision ?",
+}, {
+    title: "Un appel à l’aide",
+    prompt: "Quelqu’un demande l’aide de {noms}{lieu}. Répondre détourne du but initial.",
+}, {
+    title: "Un malentendu",
+    prompt: "Une parole de {noms} est mal interprétée{lieu}. Distinguer la réalité de la croyance qui déclenche l’action.",
+}, {
+    title: "Une piste trompeuse",
+    prompt: "Mettre un indice séduisant sur la route de {noms}{lieu}. Prévoir le détail qui permettra de le remettre en question.",
+}, {
+    title: "Une blessure",
+    prompt: "Une blessure limite les possibilités de {noms}{lieu}. Préciser qui est touché et ce qui devient difficile.",
+    action: "property",
+}, {
+    title: "Un passage à franchir",
+    prompt: "Placer un seuil devant {noms}{lieu}. Franchir ce seuil signifie renoncer à une sécurité.",
+});
+IDEAS.P.push({
+    title: "Un objet transmis",
+    prompt: "Un objet change de mains entre les personnages{lieu}. Choisir qui donne, qui reçoit et ce que ce geste engage.",
+    action: "transfer",
+}, {
+    title: "Une victoire coûteuse",
+    prompt: "Offrir à {noms} une victoire{lieu}, mais faire payer un prix concret qui pèsera sur la suite.",
+}, {
+    title: "Une trahison",
+    prompt: "Briser la confiance de {noms}{lieu}. Montrer l’acte précis, pas seulement l’annonce de la trahison.",
+}, {
+    title: "Une transformation",
+    prompt: "Changer durablement une propriété de {noms}{lieu}. Rendre la différence visible dans une action.",
+    action: "property",
+}, {
+    title: "Une preuve décisive",
+    prompt: "Faire obtenir à {noms} la preuve manquante{lieu}. Cette acquisition change le rapport de force.",
+    action: "gain",
+}, {
+    title: "Un sauvetage",
+    prompt: "Permettre à {noms} d’arracher quelqu’un au danger{lieu}. Quelle autre possibilité faut-il abandonner ?",
+}, {
+    title: "Un refus",
+    prompt: "Faire refuser à {noms} ce qui semblait indispensable{lieu}. Ce refus révèle une valeur plus profonde.",
+}, {
+    title: "Une perte définitive",
+    prompt: "Retirer à {noms} un objet précieux{lieu}. Sa disparition impose de trouver une autre voie.",
+    action: "loss",
+});
+IDEAS.R.push({
+    title: "Un objet rendu",
+    prompt: "Rendre un objet à son destinataire{lieu}. Le geste de {noms} clôt-il une dette ou ouvre-t-il une alliance ?",
+    action: "transfer",
+}, {
+    title: "Une guérison",
+    prompt: "Montrer la récupération de {noms}{lieu}. Préciser ce qui guérit et ce qui laisse une trace.",
+    action: "property",
+}, {
+    title: "Un deuil",
+    prompt: "Laisser à {noms} un moment pour mesurer une perte{lieu}. Choisir un geste concret de souvenir.",
+}, {
+    title: "Une récompense",
+    prompt: "Accorder à {noms} une récompense{lieu}. L’objet reçu répond-il vraiment au désir du départ ?",
+    action: "gain",
+}, {
+    title: "Un lien renoué",
+    prompt: "Faire renouer {noms} avec une personne{lieu}. Définir les nouvelles conditions de cette relation.",
+}, {
+    title: "Une trace durable",
+    prompt: "Inscrire les conséquences de l’épreuve dans la vie de {noms}{lieu}. Une propriété changée en garde la trace.",
+    action: "property",
+}, {
+    title: "Un retour transformé",
+    prompt: "Ramener {noms} au point de départ{lieu}. Répéter un geste ancien pour montrer ce qui a changé.",
+}, {
+    title: "Une nouvelle mission",
+    prompt: "Donner à {noms} une prochaine direction{lieu}. Elle doit naître des conséquences de la boucle, pas les effacer.",
+});
 export function newLoop(title = "Nouvelle boucle") {
     return {
         id: id(),
@@ -134,7 +279,7 @@ export function emptyTimeline() {
             tone: "Sensible et lumineux",
             premise: "",
             audience: "Tout public",
-            panelsPerPage: 4,
+            chronology: { ...DEFAULT_CHRONOLOGY },
         },
         characters: [],
         groups: [],
@@ -155,9 +300,10 @@ export function entries(t) {
     return result;
 }
 export function insertLoop(t, parentId) {
-    if (entries(t).length >= 396)
+    if (entries(t).length > 396)
         throw new Error("Limite de 400 blocs atteinte. Exportez une partie pour poursuivre.");
     const loop = newLoop();
+    loop.blocks.forEach((b) => (b.duration = chronology(t).defaultDuration));
     if (!parentId)
         t.loops.push(loop);
     else {
@@ -192,7 +338,7 @@ export function deleteCharacter(t, person) {
         block.cast = block.cast.filter((c) => c !== person);
         block.effects = block.effects.filter((e) => e.type === "relation"
             ? e.from !== person && e.to !== person
-            : e.person !== person);
+            : e.person !== person && (e.type !== "inventory" || e.to !== person));
     });
 }
 export function deleteGroup(t, group) {
@@ -210,13 +356,104 @@ const symmetric = (kind) => ![
 const same = (a, b) => a.kind === b.kind &&
     ((a.from === b.from && a.to === b.to) ||
         (symmetric(a.kind) && a.from === b.to && a.to === b.from));
+export const normalizeName = (text) => text.normalize("NFC").trim().toLocaleLowerCase("fr");
+export function chronology(t) {
+    return t.settings.chronology || { ...DEFAULT_CHRONOLOGY };
+}
+export function duration(t, b) {
+    return b.duration ?? chronology(t).defaultDuration;
+}
+export function timeAt(t, position) {
+    const all = entries(t), count = Math.max(0, Math.min(all.length, position));
+    const whole = Math.floor(count);
+    return (all.slice(0, whole).reduce((sum, e) => sum + duration(t, e.block), 0) +
+        (all[whole] ? (count - whole) * duration(t, all[whole].block) : 0));
+}
+export function timeLabel(t, position) {
+    const time = timeAt(t, position), unit = chronology(t).unit;
+    return `T + ${Number(time.toFixed(3)).toLocaleString("fr")} ${unit}${time > 1 && ["minute", "heure", "jour", "semaine", "année", "repère"].includes(unit) ? "s" : ""}`;
+}
+export function objectChoices(t) {
+    const items = [
+        ...OBJECTS,
+        ...t.characters.flatMap((c) => (c.inventory || []).map((i) => i.item)),
+        ...entries(t).flatMap((e) => e.block.effects
+            .filter((f) => f.type === "inventory")
+            .map((f) => f.item)),
+    ];
+    return items.filter((name, i) => items.findIndex((n) => normalizeName(n) === normalizeName(name)) === i);
+}
 export function stateAt(t, count) {
     const links = t.links
         .filter((l, i, all) => all.findIndex((other) => same(l, other)) === i)
         .map((l) => ({ ...l })), groups = t.groups.map((g) => ({ ...g, members: [...g.members] }));
     const present = new Set(t.characters.filter((c) => c.present).map((c) => c.id));
+    const characters = t.characters.map((c) => ({
+        ...c,
+        inventory: (c.inventory || []).map((i) => ({ ...i })),
+        properties: (c.properties || []).map((p) => ({ ...p })),
+    }));
+    const issues = [];
     for (const { block } of entries(t).slice(0, Math.max(0, Math.floor(count))))
         for (const e of block.effects) {
+            if (e.type === "inventory") {
+                const owner = characters.find((c) => c.id === e.person);
+                const inventory = owner.inventory;
+                const current = inventory.find((i) => normalizeName(i.item) === normalizeName(e.item));
+                const receiver = e.operation === "transfer"
+                    ? characters.find((c) => c.id === e.to)
+                    : undefined;
+                if (e.operation !== "gain" &&
+                    (!current || current.quantity < e.quantity)) {
+                    issues.push({
+                        block: block.id,
+                        effect: e.id,
+                        text: `${owner.name} ne possède pas ${e.quantity} × ${e.item}. ${e.operation === "transfer" ? "Transfert" : "Perte"} non appliqué.`,
+                    });
+                    continue;
+                }
+                if (e.operation === "transfer" &&
+                    (!receiver || receiver.id === owner.id)) {
+                    issues.push({
+                        block: block.id,
+                        effect: e.id,
+                        text: "Transfert invalide : choisissez deux personnages différents.",
+                    });
+                    continue;
+                }
+                const target = e.operation === "gain" ? owner : receiver;
+                const targetItem = target?.inventory.find((i) => normalizeName(i.item) === normalizeName(e.item));
+                if (target && (targetItem?.quantity || 0) + e.quantity > 1_000_000) {
+                    issues.push({
+                        block: block.id,
+                        effect: e.id,
+                        text: `Stock maximal dépassé pour ${e.item} : changement non appliqué.`,
+                    });
+                    continue;
+                }
+                if (e.operation !== "gain" && current) {
+                    current.quantity -= e.quantity;
+                    owner.inventory = inventory.filter((i) => i.quantity > 0);
+                }
+                if (target) {
+                    if (targetItem)
+                        targetItem.quantity += e.quantity;
+                    else
+                        target.inventory.push({ item: e.item, quantity: e.quantity });
+                }
+            }
+            if (e.type === "property") {
+                const owner = characters.find((c) => c.id === e.person);
+                const index = owner.properties.findIndex((p) => normalizeName(p.name) === normalizeName(e.name));
+                if (e.remove) {
+                    if (index >= 0)
+                        owner.properties.splice(index, 1);
+                }
+                else if (index >= 0)
+                    owner.properties[index] = { name: e.name, value: e.value };
+                else
+                    owner.properties.push({ name: e.name, value: e.value });
+            }
             if (e.type === "presence") {
                 if (e.present)
                     present.add(e.person);
@@ -240,13 +477,14 @@ export function stateAt(t, count) {
                     links.push({ id: e.id, from: e.from, to: e.to, kind: e.kind });
             }
         }
-    return { links, groups, present };
+    return { links, groups, present, characters, issues };
 }
 export function outline(t, b) {
     const names = b.cast
         .map((p) => t.characters.find((c) => c.id === p)?.name)
         .filter(Boolean);
-    let prompt = (IDEAS[b.phase].find((i) => i.title === b.situation) || IDEAS[b.phase][0]).prompt;
+    let prompt = IDEAS[b.phase].find((i) => i.title === b.situation)?.prompt ||
+        `${b.situation || LABELS[b.phase]} : préciser ce qui arrive à {noms}{lieu}, le désir en jeu et les conséquences.`;
     if (names.length <= 1) {
         const singular = {
             "se rencontrent": "fait une rencontre",
@@ -277,10 +515,8 @@ export function outline(t, b) {
         .replace("{noms}", subject)
         .replace("{lieu}", b.place ? ` (lieu : ${b.place})` : "");
 }
-export function panels(t) {
-    return entries(t)
-        .filter((e) => !e.block.loops.length)
-        .map((e) => ({
+export function passages(t) {
+    return entries(t).map((e) => ({
         ...e,
         text: e.block.text || outline(t, e.block),
         drafted: !!e.block.text && !e.block.generated,
@@ -288,12 +524,14 @@ export function panels(t) {
 }
 export function markdown(t) {
     return (`# ${t.title}\n\n${t.settings.premise}\n\n${t.settings.genre} · ${t.settings.tone}\n\n` +
-        panels(t)
-            .map((e, i) => `## Page ${Math.floor(i / t.settings.panelsPerPage) + 1} · Case ${(i % t.settings.panelsPerPage) + 1}\n\n${e.path} — ${e.block.title}\n\n${e.text}${e.drafted ? "" : "\n\n*Proposition à écrire, non validée.*"}\n`)
+        passages(t)
+            .map((e, i) => `## ${e.path} — ${e.block.title}\n\n${timeLabel(t, i)} → ${timeLabel(t, i + 1)}\n\n${e.text}${e.drafted ? "" : "\n\n*Proposition à écrire, non validée.*"}\n`)
             .join("\n"));
 }
 export function warnings(t) {
-    const out = [];
+    const out = [
+        ...stateAt(t, entries(t).length).issues,
+    ];
     if (!t.characters.length)
         out.push({ text: "Ajoutez au moins un personnage pour porter le récit." });
     if (!t.settings.premise.trim())
@@ -354,9 +592,21 @@ export function parseTimeline(text) {
     for (const k of ["genre", "tone", "premise", "audience"])
         if (!str(t.settings[k]))
             fail();
-    if (!Number.isInteger(t.settings.panelsPerPage) ||
-        t.settings.panelsPerPage < 1 ||
-        t.settings.panelsPerPage > 6)
+    // Read old archives without retaining the former block-to-panel assumption.
+    delete t.settings.panelsPerPage;
+    if (t.settings.chronology === undefined)
+        t.settings.chronology = { ...DEFAULT_CHRONOLOGY };
+    const chrono = t.settings.chronology;
+    const positive = (n) => typeof n === "number" && Number.isFinite(n) && n >= 0.001 && n <= 1_000_000;
+    const quantity = (n) => Number.isInteger(n) && n > 0 && n <= 1_000_000;
+    const named = (s) => str(s, 100) && s.trim().length > 0;
+    if (!obj(chrono) ||
+        !str(chrono.origin, 200) ||
+        !chrono.origin.trim() ||
+        !str(chrono.unit, 30) ||
+        !chrono.unit.trim() ||
+        typeof chrono.configured !== "boolean" ||
+        !positive(chrono.defaultDuration))
         fail();
     for (const c of t.characters) {
         if (!obj(c))
@@ -366,6 +616,26 @@ export function parseTimeline(text) {
             !str(c.goal) ||
             !/^#[0-9a-f]{6}$/i.test(c.color) ||
             typeof c.present !== "boolean")
+            fail();
+        if (c.inventory === undefined)
+            c.inventory = [];
+        if (c.properties === undefined)
+            c.properties = [];
+        if (!arr(c.inventory, 200) || !arr(c.properties, 100))
+            fail();
+        for (const item of c.inventory)
+            if (!obj(item) || !named(item.item) || !quantity(item.quantity))
+                fail();
+        for (const prop of c.properties)
+            if (!obj(prop) ||
+                !named(prop.name) ||
+                !str(prop.value, 2000) ||
+                !prop.value.trim())
+                fail();
+        if (new Set(c.inventory.map((i) => normalizeName(i.item))).size !==
+            c.inventory.length ||
+            new Set(c.properties.map((p) => normalizeName(p.name))).size !==
+                c.properties.length)
             fail();
     }
     const people = new Set(t.characters.map((c) => c.id));
@@ -408,6 +678,11 @@ export function parseTimeline(text) {
                 if (++total > 400 || !obj(b))
                     fail();
                 ident(b.id);
+                if (b.duration === undefined)
+                    b.duration = chrono.defaultDuration;
+                if (!positive(b.duration) ||
+                    (b.generated !== undefined && typeof b.generated !== "boolean"))
+                    fail();
                 if (b.phase !== PHASES[i] ||
                     !str(b.title, 200) ||
                     !str(b.situation, 200) ||
@@ -433,6 +708,24 @@ export function parseTimeline(text) {
                         if (!people.has(e.person) ||
                             !groups.has(e.group) ||
                             typeof e.join !== "boolean")
+                            fail();
+                    }
+                    else if (e.type === "inventory") {
+                        if (!people.has(e.person) ||
+                            !named(e.item) ||
+                            !quantity(e.quantity) ||
+                            !["gain", "loss", "transfer"].includes(e.operation))
+                            fail();
+                        if (e.operation === "transfer" &&
+                            (!people.has(e.to) || e.to === e.person))
+                            fail();
+                    }
+                    else if (e.type === "property") {
+                        if (!people.has(e.person) ||
+                            !named(e.name) ||
+                            !str(e.value, 2000) ||
+                            typeof e.remove !== "boolean" ||
+                            (!e.remove && !e.value.trim()))
                             fail();
                     }
                     else

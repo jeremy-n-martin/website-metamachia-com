@@ -1,4 +1,5 @@
-import { KEY, MAX_DEPTH, LABELS, HINTS, IDEAS, RELATIONS, id, emptyTimeline, demoTimeline, entries, insertLoop, deleteLoop, deleteCharacter, deleteGroup, stateAt, outline, panels, markdown, warnings, parseTimeline, } from "../src/timeline.js?v=013e2e087482";
+import { KEY, MAX_DEPTH, LABELS, HINTS, IDEAS, RELATIONS, id, emptyTimeline, demoTimeline, entries, insertLoop, deleteLoop, deleteCharacter, deleteGroup, outline, passages, markdown, warnings, parseTimeline, chronology, duration, timeLabel, normalizeName, } from "../src/timeline.js?v=528a9284a674";
+import { effectDescription, choiceField, inventoryFields, propertyFields, worldHtml, consequenceHtml, } from "./state-ui.js?v=528a9284a674";
 const app = document.querySelector("#app");
 const modal = document.querySelector("#modal");
 const toast = document.querySelector("#toast");
@@ -94,12 +95,12 @@ function render() {
     const scroll = document.querySelector(".canvas-scroll")?.scrollTop || 0;
     const side = document.querySelector(".inspector")?.scrollTop || 0;
     const all = entries(project);
-    app.innerHTML = `<header class="topbar"><a class="brand" href="#" aria-label="Metamachia">m<span>·</span></a><div class="project-heading"><span class="eyebrow">METAMACHIA / ATELIER DE RÉCIT</span><h1>${e(project.title)}</h1></div><span class="save-state">${saveStatus()}</span><div class="top-actions">${button("undo", "↶", 'aria-label="Annuler la dernière modification" ' + (!history.length ? "disabled" : ""))}${button("redo", "↷", 'aria-label="Rétablir" ' + (!future.length ? "disabled" : ""))}${button("settings", "Réglages")}${button("pages", "▦ Pages & cases")}${button("export", "Sauvegarder", "", "primary")}</div></header>
-  <main class="workspace"><aside class="left-panel"><section class="people-panel"><div class="section-heading"><h2>Les personnages</h2>${button("person", "+ Ajouter", "", "small")}</div><p class="muted">Glissez-les dans un bloc, ou ajoutez-les depuis son panneau.</p><div class="people-list">${project.characters.map((c) => `<div class="person-card" draggable="true" data-person="${c.id}"><span class="avatar" style="--person:${c.color}">${e(c.name.slice(0, 1))}</span><div><strong>${e(c.name)}</strong><small>${e(c.goal || "Un désir à préciser")}</small></div>${button("person", "✎", `data-id="${c.id}" aria-label="Modifier ${e(c.name)}"`, "icon")}</div>`).join("") || `<div class="empty-state">Tout commence avec quelqu’un.<br>Ajoutez votre premier personnage.</div>`}</div></section><section class="world-panel"><div class="section-heading"><h2>Les liens, à cet instant</h2><span class="live-dot"></span></div><div id="world-state"></div><div class="baseline-actions">${button("baseline", "✧ Définir l’état zéro")}${button("group", "+ Groupe / faction")}</div><p class="muted tiny">L’état zéro précède tous les blocs. Les changements prennent effet au début du bloc, avant ses sous-boucles.</p></section></aside>
+    app.innerHTML = `<header class="topbar"><a class="brand" href="#" aria-label="Metamachia">m<span>·</span></a><div class="project-heading"><span class="eyebrow">METAMACHIA / ATELIER DE RÉCIT</span><h1>${e(project.title)}</h1></div><span class="save-state">${saveStatus()}</span><div class="top-actions">${button("undo", "↶", 'aria-label="Annuler la dernière modification" ' + (!history.length ? "disabled" : ""))}${button("redo", "↷", 'aria-label="Rétablir" ' + (!future.length ? "disabled" : ""))}${button("chronology", chronology(project).configured ? "◷ Chronologie" : "◷ Définir la chronologie")}${button("settings", "Réglages")}${button("export", "Sauvegarder", "", "primary")}</div></header>
+  <main class="workspace"><aside class="left-panel"><section class="people-panel"><div class="section-heading"><h2>Les personnages</h2>${button("person", "+ Ajouter", "", "small")}</div><p class="muted">Glissez-les dans un bloc, ou ajoutez-les depuis son panneau.</p><div class="people-list">${project.characters.map((c) => `<div class="person-card" draggable="true" data-person="${c.id}"><span class="avatar" style="--person:${c.color}">${e(c.name.slice(0, 1))}</span><div><strong>${e(c.name)}</strong><small>${e(c.goal || "Un désir à préciser")}</small></div>${button("person", "✎", `data-id="${c.id}" aria-label="Modifier ${e(c.name)}"`, "icon")}</div>`).join("") || `<div class="empty-state">Tout commence avec quelqu’un.<br>Ajoutez votre premier personnage.</div>`}</div></section><section class="world-panel"><div class="section-heading"><h2>L’histoire à cet instant</h2><span class="live-dot"></span></div><div class="baseline-actions">${button("start", "↟ Début du roman")}${button("baseline", "Relations initiales")}${button("group", "+ Groupe / faction")}</div><div id="world-state"></div><p class="muted tiny">T = 0 est le début du roman. Les effets apparaissent à la fin de chaque passage ; les sous-boucles se lisent ensuite.</p></section></aside>
   <section class="timeline-panel"><div class="transport"><div class="transport-main">${button("start", "↟", 'aria-label="Revenir à l’état zéro"')}${button("play", "▶ Lire", "", "primary")}${button("step", "↓", 'aria-label="Avancer d’un bloc"')}<label class="sr-only" for="scrub">Position de lecture</label><input id="scrub" type="range" min="0" max="${all.length}" step="0.01" value="${position}"><span id="readout"></span></div><div class="transport-options"><label>Vitesse <select id="speed"><option value="8" ${speed === 8 ? "selected" : ""}>Lente</option><option value="4" ${speed === 4 ? "selected" : ""}>Normale</option><option value="1.5" ${speed === 1.5 ? "selected" : ""}>Rapide</option></select></label><label>Sens <select id="direction"><option value="1" ${direction === 1 ? "selected" : ""}>↓ Vers la fin</option><option value="-1" ${direction === -1 ? "selected" : ""}>↑ Vers le début</option></select></label><label>Échelle <select id="zoom"><option value="1" ${zoom === 1 ? "selected" : ""}>Confort</option><option value="0.8" ${zoom === 0.8 ? "selected" : ""}>Compacte</option></select></label></div></div>
   <div class="canvas-scroll"><div class="canvas" style="--density:${zoom}"><div class="canvas-intro"><span class="eyebrow">UNE HISTOIRE, PLUSIEURS PROFONDEURS</span><h2>Dépliez le fil.</h2><p>Quatre temps pour avancer. Des boucles pour approfondir.</p><div class="legend">${Object.entries(LABELS)
         .map(([key, value]) => `<span class="legend-item phase-${key}"><i></i>${value}</span>`)
-        .join("")}</div></div><div class="timeline-surface"><div class="origin" id="origin">${button("start", "◉ État zéro")}<span>Avant que tout commence</span></div><div id="reading-cursor" aria-hidden="true"><span>LECTURE</span></div>${project.loops.map((l) => loopHtml(l, 1)).join("")}<div class="add-root">${button("root", "+ Ajouter une boucle narrative", "", "outline")}</div><div id="timeline-end">La suite vous appartient.</div></div></div></div><footer class="canvas-footer"><span>${all.length} blocs · ${panels(project).length} cases possibles · 7 niveaux maximum</span>${button("guide", "✧ Repères de cohérence", "", "text-button")}</footer></section><aside class="inspector">${inspectorHtml()}</aside></main>`;
+        .join("")}</div></div><div class="timeline-surface"><div class="origin" id="origin">${button("start", "◉ T = 0 · Début du roman")}<span>${e(chronology(project).origin)}</span></div><div id="reading-cursor" aria-hidden="true"><span>LECTURE</span></div>${project.loops.map((l) => loopHtml(l, 1)).join("")}<div class="add-root">${button("root", "+ Ajouter une boucle narrative", "", "outline")}</div><div id="timeline-end">La suite vous appartient.</div></div></div></div><footer class="canvas-footer"><span>${all.length} blocs · 7 niveaux maximum · hauteur non proportionnelle au temps</span>${button("guide", "✧ Repères de cohérence", "", "text-button")}</footer></section><aside class="inspector">${inspectorHtml()}</aside></main>`;
     const scroller = document.querySelector(".canvas-scroll");
     scroller.scrollTop = scroll;
     document.querySelector(".inspector").scrollTop = side;
@@ -114,6 +115,28 @@ function render() {
             tag.textContent = "Amorce à personnaliser";
             card.querySelector(".block-meta")?.append(tag);
         }
+        if (b) {
+            const index = all.findIndex((x) => x.block.id === b.id);
+            const timing = document.createElement("div");
+            timing.className = "block-timing";
+            timing.textContent = `${timeLabel(project, index)} → ${timeLabel(project, index + 1)}`;
+            card.prepend(timing);
+            const changes = document.createElement("div");
+            changes.className = "block-changes";
+            changes.innerHTML = b.effects
+                .map((f) => `<p>${e(effectText(f))}</p>`)
+                .join("");
+            card.append(changes);
+        }
+    });
+    document.querySelectorAll(".loop").forEach((el) => {
+        const entry = all.find((x) => x.loop.id === el.dataset.loop);
+        if (!entry)
+            return;
+        const rail = document.createElement("div");
+        rail.className = "loop-title-rail";
+        rail.innerHTML = button("focus-loop", `<span>N${entry.depth}</span> ${e(entry.loop.title)}`, `data-id="${entry.loop.id}" title="${e(entry.loop.title)}" aria-label="Revenir à ${e(entry.loop.title)}, niveau ${entry.depth}"`, "sticky-loop-title");
+        el.prepend(rail);
     });
     updateReader();
 }
@@ -121,18 +144,21 @@ function loopHtml(loop, depth) {
     return `<section class="loop" data-loop="${loop.id}" style="--depth:${depth}"><header class="loop-heading"><span class="level">${String(depth).padStart(2, "0")}</span>${button("loop-title", e(loop.title), `data-id="${loop.id}"`, "loop-title")}<span class="depth-label">NIVEAU ${depth}</span>${button("delete-loop", "×", `data-id="${loop.id}" aria-label="Supprimer la boucle ${e(loop.title)}"`, "icon danger")}</header>${loop.blocks.map((b) => `<section class="block phase-${b.phase} ${selected === b.id ? "selected" : ""}" data-block="${b.id}"><div class="block-card" data-select="${b.id}" tabindex="0" role="button" aria-label="Éditer ${e(b.title)}" aria-pressed="${selected === b.id}"><div class="block-top"><span class="phase-badge">${b.phase}</span><span class="phase-name">${LABELS[b.phase]}</span><span class="block-index">${entries(project).findIndex((x) => x.block.id === b.id) + 1}</span></div><h3>${e(b.title === LABELS[b.phase] ? b.situation : b.title)}</h3><p class="block-excerpt ${b.text ? "" : "suggested"}">${e((b.text || outline(project, b)).slice(0, 185))}${(b.text || outline(project, b)).length > 185 ? "…" : ""}</p><div class="cast-chips">${b.cast.map((p) => `<span class="chip">${e(name(p))}</span>`).join("") || `<span class="drop-hint">＋ Déposez un personnage ici</span>`}</div><div class="block-meta"><span>${b.place ? "⌖ " + e(b.place) : "Lieu à préciser"}</span><span>${b.effects.length ? `${b.effects.length} changement(s)` : "Aucun changement déclaré"}</span>${!b.text ? "<span>Amorce à écrire</span>" : ""}</div></div>${b.loops.length ? `<div class="nested">${b.loops.map((l) => loopHtml(l, depth + 1)).join("")}</div>` : ""}<div class="block-tail">${depth < MAX_DEPTH ? button("nest", "+ Déplier une boucle ici", `data-id="${b.id}"`, "text-button") : `<span class="muted tiny">Profondeur maximale atteinte</span>`}</div></section>`).join("")}</section>`;
 }
 function effectText(effect) {
-    if (effect.type === "relation")
-        return `${effect.remove ? "Fin du lien" : "Nouveau lien"} : ${name(effect.from)} → ${effect.kind} → ${name(effect.to)}`;
-    if (effect.type === "presence")
-        return `${name(effect.person)} : ${effect.present ? "entre dans le récit / naît" : "quitte le récit"}`;
-    return `${name(effect.person)} ${effect.join ? "rejoint" : "quitte"} ${project.groups.find((g) => g.id === effect.group)?.name || "le groupe"}`;
+    return effectDescription(project, effect);
 }
 function inspectorHtml() {
     const b = selectedBlock();
     if (!b)
         return `<div class="inspector-empty"><span class="eyebrow">L’ATELIER</span><h2>Une première boucle ?</h2><p>Créez un mouvement en quatre temps, puis dépliez-le à votre rythme.</p>${button("root", "+ Ajouter une boucle", "", "primary")}</div>`;
     const entry = entries(project).find((x) => x.block.id === b.id);
-    return `<div class="inspector-title phase-${b.phase}"><span class="eyebrow">${e(entry.path)} / NIVEAU ${entry.depth}</span><h2>${LABELS[b.phase]}</h2><p>${HINTS[b.phase]}</p></div><div class="inspector-body"><label>Titre du bloc<input data-field="title" maxlength="200" value="${e(b.title)}"></label><label>Lieu<input data-field="place" maxlength="200" value="${e(b.place)}" placeholder="Où cela se passe-t-il ?"></label><section><h3>Qui est là ?</h3><div class="cast-picker">${project.characters.map((c) => `<label class="cast-option"><input type="checkbox" data-cast="${c.id}" ${b.cast.includes(c.id) ? "checked" : ""}>${e(c.name)}</label>`).join("") || button("person", "+ Créer un personnage")}</div></section><section><div class="section-heading"><h3>Une direction</h3><span class="tiny muted">Dictionnaire local</span></div><div class="idea-grid">${IDEAS[b.phase].map((v, i) => button("idea", e(v.title), `data-index="${i}" aria-pressed="${v.title === b.situation}"`, v.title === b.situation ? "idea active" : "idea")).join("")}</div><p class="suggestion">${e(outline(project, b))}</p>${button("use-idea", "↓ Utiliser cette amorce", "", "small")}</section><label>Votre scène / intention<textarea data-field="text" maxlength="20000" rows="7" placeholder="Écrivez librement. Le texte ne crée pas automatiquement de relations.">${e(b.text)}</textarea></label><section><div class="section-heading"><h3>Ce qui change</h3>${button("effect", "+ Ajouter", "", "small")}</div><p class="muted tiny">Ces faits font évoluer les liens pendant la lecture. Les amorces, elles, ne changent rien automatiquement.</p><div class="effects">${b.effects.map((f) => `<div class="effect"><span>${e(effectText(f))}</span>${button("remove-effect", "×", `data-id="${f.id}" aria-label="Retirer ce changement"`, "icon")}</div>`).join("") || `<p class="muted">Pas encore de changement.</p>`}</div>${b.cast.length >= 2 ? button("suggest-link", "✧ Proposer un lien entre ces personnages", "", "small") : ""}</section><section class="deepen"><h3>Un récit dans le récit</h3><p class="muted">Décomposez ce temps en quatre nouveaux blocs. Son texte devient une intention d’ensemble ; les feuilles deviennent les cases.</p>${entry.depth < MAX_DEPTH ? button("nest", "+ Imbriquer une boucle", `data-id="${b.id}"`) : "Septième niveau atteint."}</section>${button("at-block", "◎ Lire jusqu’à ce bloc", `data-id="${b.id}"`, "full")}</div>`;
+    return `<div class="inspector-title phase-${b.phase}"><span class="eyebrow">${e(entry.path)} / NIVEAU ${entry.depth}</span><h2>${LABELS[b.phase]}</h2><p>${HINTS[b.phase]}</p></div><div class="inspector-body">
+  <label>Titre du bloc<input data-field="title" maxlength="200" value="${e(b.title)}"></label><label>Lieu<input data-field="place" maxlength="200" value="${e(b.place)}" placeholder="Où cela se passe-t-il ?"></label>
+  <label>Durée du passage (${e(chronology(project).unit)})<input type="number" data-duration min="0.001" max="1000000" step="any" value="${duration(project, b)}" required></label><p class="muted tiny">Durée de ce passage, hors sous-boucles. Les effets se produisent à sa fin, avant la lecture des sous-boucles.</p>
+  <section><h3>Qui est là ?</h3><div class="cast-picker">${project.characters.map((c) => `<label class="cast-option"><input type="checkbox" data-cast="${c.id}" ${b.cast.includes(c.id) ? "checked" : ""}>${e(c.name)}</label>`).join("") || button("person", "+ Créer un personnage")}</div></section>
+  <section><div class="section-heading"><h3>Une direction</h3><span class="tiny muted">${IDEAS[b.phase].length} amorces</span></div><div class="idea-grid">${IDEAS[b.phase].map((v, i) => button("idea", e(v.title), `data-index="${i}" aria-pressed="${v.title === b.situation}"`, v.title === b.situation ? "idea active" : "idea")).join("")}</div><label>Ou votre propre amorce<input data-field="situation" maxlength="200" value="${e(b.situation)}" placeholder="Un événement de votre invention"></label><p class="suggestion">${e(outline(project, b))}</p>${button("use-idea", "↓ Utiliser cette amorce", "", "small")}</section>
+  <label>Votre scène / intention<textarea data-field="text" maxlength="20000" rows="7" placeholder="Écrivez librement ; déclarez les effets avec les boutons ci-dessous.">${e(b.text)}</textarea></label>
+  <section><div class="section-heading"><h3>Ce qui change dans l’histoire</h3>${button("effect", "+ Ajouter", "", "small")}</div><div class="quick-effects">${button("effect-type", "＋ Gain d’un objet", 'data-type="inventory" data-operation="gain"')}${button("effect-type", "− Perte d’un objet", 'data-type="inventory" data-operation="loss"')}${button("effect-type", "↗ Transférer un objet", 'data-type="inventory" data-operation="transfer"')}${button("effect-type", "✧ Changer une propriété", 'data-type="property"')}</div><p class="muted tiny">Ces effets mettent à jour les fiches à la fin de ce passage. Le texte libre n’est pas interprété automatiquement.</p><div class="effects">${b.effects.map((f) => `<div class="effect"><span>${e(effectText(f))}</span>${button("remove-effect", "×", `data-id="${f.id}" aria-label="Retirer ce changement"`, "icon")}</div>`).join("") || '<p class="muted">Aucun changement déclaré.</p>'}</div>${consequenceHtml(project, b.id)}${b.cast.length >= 2 ? button("suggest-link", "✧ Proposer un lien entre ces personnages", "", "small") : ""}</section>
+  <section class="deepen"><h3>Un récit dans le récit</h3><p class="muted">Un bloc peut couvrir plusieurs scènes. Dépliez-le si cela aide votre composition : aucun découpage en cases n’est imposé.</p>${entry.depth < MAX_DEPTH ? button("nest", "+ Imbriquer une boucle", `data-id="${b.id}"`) : "Septième niveau atteint."}</section>${button("at-block", "◎ Voir l’état après ce passage", `data-id="${b.id}"`, "full")}</div>`;
 }
 function updateReader(follow = false) {
     const all = entries(project), count = Math.min(all.length, Math.floor(position));
@@ -140,13 +166,21 @@ function updateReader(follow = false) {
     if (slider)
         slider.value = String(position);
     const readout = document.querySelector("#readout");
-    if (readout)
-        readout.textContent = `${count} / ${all.length}`;
+    if (readout) {
+        readout.textContent = timeLabel(project, position);
+        readout.setAttribute("title", `${count} passage(s) lu(s) sur ${all.length}`);
+    }
     if (count !== lastCount) {
         lastCount = count;
-        const state = stateAt(project, count);
         const world = document.querySelector("#world-state");
-        world.innerHTML = `<p class="moment-label">${count ? `${e(all[count - 1].block.title)} · après l’entrée du bloc ${count}` : "ÉTAT ZÉRO · AVANT LE RÉCIT"}</p><div class="presence">${project.characters.map((c) => `<span class="chip ${state.present.has(c.id) ? "" : "absent"}" title="${state.present.has(c.id) ? "Dans le récit" : "Pas encore / plus dans le récit"}">${e(c.name)}${state.present.has(c.id) ? "" : " · absent"}</span>`).join("")}</div><div class="relations">${state.links.map((l) => `<div class="relationship"><span>${e(name(l.from))}</span><span class="relation-line">${e(l.kind)} →</span><span>${e(name(l.to))}</span></div>`).join("") || `<p class="muted">Aucun lien établi à cet instant.</p>`}</div>${state.groups.map((g) => `<div class="group-card"><div><span class="eyebrow">${g.kind}</span>${button("group", e(g.name), `data-id="${g.id}"`, "text-button")}</div><p>${g.members.map((p) => e(name(p))).join(" · ") || "Aucun membre"}</p></div>`).join("")}`;
+        const closed = [
+            ...world.querySelectorAll("details"),
+        ].map((d, i) => (!d.open ? i : -1));
+        world.innerHTML = worldHtml(project, count);
+        [...world.querySelectorAll("details")].forEach((d, i) => {
+            if (closed.includes(i))
+                d.open = false;
+        });
         document
             .querySelectorAll(".block-card.reading")
             .forEach((el) => el.classList.remove("reading"));
@@ -162,8 +196,11 @@ function updateReader(follow = false) {
         document.querySelector("#origin"),
         ...all.map((x) => document.querySelector(`[data-select="${x.block.id}"]`)),
     ];
-    const y = (el) => el.getBoundingClientRect().top - surface.getBoundingClientRect().top;
-    const start = y(marks[count]), end = count < all.length ? y(marks[count + 1]) : start;
+    const y = (el, index) => (index === 0
+        ? el.getBoundingClientRect().top
+        : el.getBoundingClientRect().bottom) -
+        surface.getBoundingClientRect().top;
+    const start = y(marks[count], count), end = count < all.length ? y(marks[count + 1], count + 1) : start;
     cursor.style.top = `${start + (end - start) * (position - count)}px`;
     if (follow) {
         const container = document.querySelector(".canvas-scroll"), bounds = cursor.getBoundingClientRect(), area = container.getBoundingClientRect();
@@ -222,7 +259,7 @@ function groupForm(groupId) {
 function relationFields(from = "", to = "") {
     return `<div class="form-row"><label>De<select name="from" required>${options(project.characters, from)}</select></label><label>Vers<select name="to" required>${options(project.characters, to || project.characters[1]?.id)}</select></label></div><label>Lien · dictionnaire<select name="kind">${RELATIONS.map((g) => `<optgroup label="${e(g.category)}">${g.values.map((v) => `<option>${e(v)}</option>`).join("")}</optgroup>`).join("")}</select></label>${field("Ou votre propre lien", "custom", "", false)}<p class="muted tiny">Plusieurs liens peuvent coexister. Pour remplacer une amitié par une rivalité, retirez le premier lien puis ajoutez le second. « Parent de » va du parent vers l’enfant.</p>`;
 }
-function effectForm(type = "relation", suggested = false) {
+function effectForm(type = "relation", suggested = false, operation = "gain") {
     const b = selectedBlock();
     if (!b)
         return;
@@ -230,7 +267,7 @@ function effectForm(type = "relation", suggested = false) {
         announce("Ajoutez d’abord un personnage.");
         return;
     }
-    show(suggested ? "Une rencontre, quel lien ?" : "Un changement dans ce bloc", `<div class="modal-tabs">${button("effect-type", "Relation", 'data-type="relation"')}${button("effect-type", "Entrée / sortie", 'data-type="presence"')}${button("effect-type", "Groupe / faction", 'data-type="membership"')}</div><form data-form="effect" data-type="${type}">${suggested ? `<p class="callout">Proposition neutre : une connaissance. Vous choisissez le lien ; rien n’est déduit du genre des personnages.</p>` : ""}${type === "relation" ? `${relationFields(b.cast[0], b.cast[1])}<label>Action<select name="operation"><option value="add">Établir ce lien</option><option value="remove">Mettre fin à ce lien</option></select></label>` : type === "presence" ? `<label>Personnage<select name="person">${options(project.characters)}</select></label><label>Action<select name="operation"><option value="add">Entrée dans le récit / naissance</option><option value="remove">Sortie du récit</option></select></label>` : `<label>Personnage<select name="person">${options(project.characters)}</select></label><label>Groupe<select name="group" required>${options(project.groups)}</select></label><label>Action<select name="operation"><option value="add">Rejoindre</option><option value="remove">Quitter</option></select></label>${!project.groups.length ? "<p>Créez d’abord un groupe dans le panneau de gauche.</p>" : ""}`}${formEnd("Ajouter le changement")}`);
+    show(suggested ? "Une rencontre, quel lien ?" : "Un changement dans ce bloc", `<div class="modal-tabs">${button("effect-type", "Inventaire", 'data-type="inventory"')}${button("effect-type", "Propriété", 'data-type="property"')}${button("effect-type", "Relation", 'data-type="relation"')}${button("effect-type", "Entrée / sortie", 'data-type="presence"')}${button("effect-type", "Groupe / faction", 'data-type="membership"')}</div><form data-form="effect" data-type="${type}">${suggested ? `<p class="callout">Proposition neutre : une connaissance. Vous choisissez le lien ; rien n’est déduit du genre des personnages.</p>` : ""}${type === "inventory" ? inventoryFields(project, b.cast[0], operation) : type === "property" ? propertyFields(project, b.cast[0]) : type === "relation" ? `${relationFields(b.cast[0], b.cast[1])}<label>Action<select name="operation"><option value="add">Établir ce lien</option><option value="remove">Mettre fin à ce lien</option></select></label>` : type === "presence" ? `<label>Personnage<select name="person">${options(project.characters)}</select></label><label>Action<select name="operation"><option value="add">Entrée dans le récit / naissance</option><option value="remove">Sortie du récit</option></select></label>` : `<label>Personnage<select name="person">${options(project.characters)}</select></label><label>Groupe<select name="group" required>${options(project.groups)}</select></label><label>Action<select name="operation"><option value="add">Rejoindre</option><option value="remove">Quitter</option></select></label>${!project.groups.length ? "<p>Créez d’abord un groupe dans le panneau de gauche.</p>" : ""}`}${formEnd("Ajouter le changement")}`);
 }
 function baselineForm() {
     position = 0;
@@ -238,14 +275,18 @@ function baselineForm() {
     show("Les relations à l’état zéro", `<p class="muted">Les liens ci-dessous existent avant toute action. Les groupes peuvent réunir autant de personnages que nécessaire.</p><div class="effects">${project.links.map((l) => `<div class="effect"><span>${e(name(l.from))} → ${e(l.kind)} → ${e(name(l.to))}</span>${button("delete-link", "×", `data-id="${l.id}" aria-label="Supprimer ce lien initial"`, "icon")}</div>`).join("")}</div><form data-form="baseline">${relationFields()}${formEnd("Ajouter ce lien initial")}`);
 }
 function settingsForm() {
-    show("La boussole de votre histoire", `<form data-form="settings">${field("Titre", "title", project.title, true, 200)}${field("Genre", "genre", project.settings.genre, false, 200)}${field("Style / tonalité", "tone", project.settings.tone, false, 200)}${field("Public", "audience", project.settings.audience, false, 200)}<label>Le cœur de l’histoire<textarea name="premise" maxlength="20000" rows="4" placeholder="Quelqu’un veut… mais… et risque de…">${e(project.settings.premise)}</textarea></label><label>Cases par page<select name="panelsPerPage">${[1, 2, 3, 4, 5, 6].map((n) => `<option ${n === project.settings.panelsPerPage ? "selected" : ""}>${n}</option>`).join("")}</select></label><p class="muted">Le style guide votre écriture. Les amorces locales sont des structures à personnaliser, pas un roman généré par IA.</p>${formEnd()}<div class="settings-tools">${button("import", "Importer une frise JSON")}${button("demo", "Explorer un exemple")}${legacy ? button("legacy", "Exporter mes anciennes histoires") : ""}${button("jev", "Comment Jev pourra aider")}</div>`);
+    show("La boussole de votre histoire", `<form data-form="settings">${field("Titre", "title", project.title, true, 200)}${field("Genre", "genre", project.settings.genre, false, 200)}${field("Style / tonalité", "tone", project.settings.tone, false, 200)}${field("Public", "audience", project.settings.audience, false, 200)}<label>Le cœur de l’histoire<textarea name="premise" maxlength="20000" rows="4" placeholder="Quelqu’un veut… mais… et risque de…">${e(project.settings.premise)}</textarea></label><p class="muted">Le style guide votre écriture. Les amorces locales sont des structures à personnaliser, pas un roman généré par IA.</p>${formEnd()}<div class="settings-tools">${button("chronology", "Modifier la chronologie")}${button("markdown", "Exporter le récit Markdown")}${button("generate", "Préremplir les blocs vides")}${button("import", "Importer une frise JSON")}${button("demo", "Explorer un exemple")}${legacy ? button("legacy", "Exporter mes anciennes histoires") : ""}${button("jev", "Comment Jev pourra aider")}</div>`);
 }
-function pagePreview() {
-    const cards = panels(project), size = project.settings.panelsPerPage;
-    show("Du fil aux pages", `<p class="muted">Chaque bloc sans sous-boucle devient une case. Les blocs parents restent des intentions, pas des scènes dupliquées. Les amorces non écrites restent signalées.</p><div class="preview-actions">${button("generate", "Préremplir les cases vides")}${button("markdown", "Exporter le découpage Markdown")}</div><div class="pages">${Array.from({ length: Math.ceil(cards.length / size) }, (_, page) => `<section class="paper-page"><h3>Page ${page + 1}</h3><div class="panel-grid">${cards
-        .slice(page * size, (page + 1) * size)
-        .map((c, i) => `<button class="book-panel phase-${c.block.phase}" data-action="select-page" data-id="${c.block.id}"><span class="eyebrow">CASE ${i + 1} · ${LABELS[c.block.phase]}</span><h4>${e(c.block.title)}</h4><p>${e(c.text)}</p><small>${c.drafted ? "Texte éditable" : "Amorce non validée"} · cliquer pour éditer</small></button>`)
-        .join("")}</div></section>`).join("") || "Ajoutez une boucle pour commencer."}</div>`, true);
+function chronologyForm() {
+    const c = chronology(project);
+    show("Quand commence votre roman ?", `<form data-form="chronology"><p class="callout"><strong>T = 0 est le début du roman, tout en haut de la frise.</strong> Les inventaires, propriétés et relations initiaux décrivent cet instant, pas une époque antérieure.</p>${field("Repère de départ · date, époque ou événement", "origin", c.origin, true, 200)}${choiceField("Unité de la chronologie", "unit", ["minute", "heure", "jour", "semaine", "mois", "année", "repère"], "Autre unité de temps", c.unit)}<label>Durée proposée pour les nouveaux passages<input name="defaultDuration" type="number" min="0.001" max="1000000" step="any" value="${c.defaultDuration}" required></label><p class="muted">Chaque bloc a sa durée propre, modifiable à droite. Les dates sont des repères libres : aucune conversion de calendrier n’est imposée. La hauteur des blocs dépend de leur contenu, pas de leur durée. Les effets sont appliqués à la fin du passage, puis ses sous-boucles sont lues.</p>${formEnd("Fixer le début du roman")}`);
+}
+function initialStateForm(type, person) {
+    position = 0;
+    updateReader(true);
+    show(type === "inventory"
+        ? "Inventaire au début du roman"
+        : "Propriétés au début du roman", `<form data-form="initial-state" data-type="${type}">${type === "inventory" ? inventoryFields(project, person, "gain", true) : propertyFields(project, person, true)}${formEnd("Mettre à jour l’état initial")}`);
 }
 function download(filename, text, type = "application/json") {
     const url = URL.createObjectURL(new Blob([text], { type }));
@@ -261,6 +302,7 @@ function confirmAction(title, text, action, target = "") {
 function selectBlock(block) {
     stop();
     selected = block;
+    position = Math.max(0, entries(project).findIndex((x) => x.block.id === block));
     render();
 }
 document.addEventListener("click", (event) => {
@@ -304,6 +346,16 @@ document.addEventListener("click", (event) => {
         personForm(targetId);
     if (action === "group")
         groupForm(targetId);
+    if (action === "chronology")
+        chronologyForm();
+    if (action === "initial-inventory")
+        initialStateForm("inventory", targetId);
+    if (action === "initial-property")
+        initialStateForm("property", targetId);
+    if (action === "focus-loop")
+        document
+            .querySelector(`[data-loop="${targetId}"] > .loop-heading`)
+            ?.scrollIntoView({ block: "start" });
     if (action === "baseline")
         baselineForm();
     if (action === "settings")
@@ -311,12 +363,16 @@ document.addEventListener("click", (event) => {
     if (action === "effect" || action === "suggest-link")
         effectForm("relation", action === "suggest-link");
     if (action === "effect-type")
-        effectForm(b.dataset.type);
-    if (action === "idea")
+        effectForm(b.dataset.type, false, b.dataset.operation || "gain");
+    if (action === "idea") {
+        const chosen = IDEAS[selectedBlock().phase][Number(b.dataset.index)];
         change(() => {
             const block = selectedBlock();
-            block.situation = IDEAS[block.phase][Number(b.dataset.index)].title;
+            block.situation = chosen.title;
         });
+        if (chosen.action)
+            effectForm(chosen.action === "property" ? "property" : "inventory", false, chosen.action === "property" ? "gain" : chosen.action);
+    }
     if (action === "use-idea") {
         const block = selectedBlock();
         if (block.text)
@@ -383,10 +439,8 @@ document.addEventListener("click", (event) => {
     if (action === "legacy")
         download("metamachia-anciennes-histoires.json", legacy);
     if (action === "markdown")
-        download("decoupage.md", markdown(project), "text/markdown");
-    if (action === "pages")
-        pagePreview();
-    if (action === "select-page") {
+        download("recit.md", markdown(project), "text/markdown");
+    if (action === "focus-block") {
         modal.close();
         selectBlock(targetId);
         document
@@ -394,12 +448,12 @@ document.addEventListener("click", (event) => {
             ?.scrollIntoView({ block: "center" });
     }
     if (action === "generate") {
-        const blanks = panels(project).filter((c) => !c.block.text);
+        const blanks = passages(project).filter((c) => !c.block.text);
         change(() => blanks.forEach((c) => {
             c.block.text = outline(project, c.block);
             c.block.generated = true;
         }));
-        pagePreview();
+        modal.close();
         announce(`${blanks.length} amorce(s) ajoutée(s). Relisez-les et personnalisez-les ; aucun fait n’a été créé.`);
     }
     if (action === "demo")
@@ -443,10 +497,10 @@ document.addEventListener("click", (event) => {
     }
     if (action === "guide") {
         const notices = warnings(project);
-        show("Les repères d’une histoire cohérente", `<p>Un personnage désire quelque chose, rencontre un obstacle, agit et en subit les conséquences. Voici les points à préciser — pas un jugement sur la valeur de votre récit.</p><div class="guide-list">${notices.map((n) => (n.block ? button("select-page", e(n.text), `data-id="${n.block}"`) : `<p>${e(n.text)}</p>`)).join("") || "Les repères de base sont renseignés. Cela ne garantit pas la cohérence de tout le texte."}</div><p class="muted">Les vérifications portent sur les déclarations, pas sur l’interprétation automatique du manuscrit. Cette version est un temps du récit linéaire, sans flash-back implicite.</p>`);
+        show("Les repères d’une histoire cohérente", `<p>Un personnage désire quelque chose, rencontre un obstacle, agit et en subit les conséquences. Voici les points à préciser — pas un jugement sur la valeur de votre récit.</p><div class="guide-list">${notices.map((n) => (n.block ? button("focus-block", e(n.text), `data-id="${n.block}"`) : `<p>${e(n.text)}</p>`)).join("") || "Les repères de base sont renseignés. Cela ne garantit pas la cohérence de tout le texte."}</div><p class="muted">Les vérifications portent sur les déclarations, pas sur l’interprétation automatique du manuscrit. Cette version est un temps du récit linéaire, sans flash-back implicite.</p>`);
     }
     if (action === "jev")
-        show("Jev : suggérer, pas décider à votre place", `<p>Jev pourrait classer les quatre directions du bloc selon le désir des personnages, les liens déjà établis et l’intention de la boucle.</p><p>Un seul appel volontaire pour comparer les possibilités ; aucun appel pendant la lecture, le glisser-déposer ou l’écriture. Les propositions resteraient à confirmer.</p><p class="callout">Non connecté. Cette version utilise un dictionnaire local et ne transmet aucune histoire. Jev ne génère pas de prose : il évalue des choix structurés.</p><p>La clé doit rester sur un petit service sécurisé, jamais dans le site public. Aucun compte ni paiement n’est nécessaire pour continuer à écrire ici.</p>`);
+        show("Jev : suggérer, pas décider à votre place", `<p>Jev pourrait classer les directions du bloc selon le désir des personnages, les liens déjà établis et l’intention de la boucle.</p><p>Un seul appel volontaire pour comparer les possibilités ; aucun appel pendant la lecture, le glisser-déposer ou l’écriture. Les propositions resteraient à confirmer.</p><p class="callout">Non connecté. Cette version utilise un dictionnaire local et ne transmet aucune histoire. Jev ne génère pas de prose : il évalue des choix structurés.</p><p>La clé doit rester sur un petit service sécurisé, jamais dans le site public. Aucun compte ni paiement n’est nécessaire pour continuer à écrire ici.</p>`);
 });
 document.addEventListener("submit", (event) => {
     const form = event.target;
@@ -454,6 +508,37 @@ document.addEventListener("submit", (event) => {
         return;
     event.preventDefault();
     const data = new FormData(form), get = (key) => String(data.get(key) || "").trim(), type = form.dataset.form, targetId = form.dataset.id;
+    const choice = (key) => get(`${key}Custom`) || (get(key) === "__other__" ? "" : get(key));
+    const effectType = form.dataset.type;
+    if ((type === "effect" || type === "initial-state") &&
+        effectType === "inventory") {
+        if (!choice("item")) {
+            announce("Choisissez un objet ou saisissez son nom dans « Autre objet ».");
+            return;
+        }
+        const quantity = Number(get("quantity"));
+        if (!Number.isInteger(quantity) ||
+            quantity < (type === "initial-state" ? 0 : 1) ||
+            quantity > 1000000) {
+            announce("Saisissez une quantité entière valide.");
+            return;
+        }
+        if (get("operation") === "transfer" &&
+            (!get("to") || get("to") === get("person"))) {
+            announce("Choisissez un destinataire différent du propriétaire.");
+            return;
+        }
+    }
+    if ((type === "effect" || type === "initial-state") &&
+        effectType === "property" &&
+        (!choice("property") || (get("operation") !== "remove" && !get("value")))) {
+        announce("Renseignez la propriété et sa valeur, ou choisissez de retirer cette information.");
+        return;
+    }
+    if (type === "chronology" && (!get("origin") || !choice("unit"))) {
+        announce("Précisez le début du roman et une unité de temps.");
+        return;
+    }
     if (["baseline", "effect"].includes(type) &&
         (type === "baseline" || form.dataset.type === "relation") &&
         (get("from") === get("to") || !get("from") || !get("to"))) {
@@ -470,6 +555,7 @@ document.addEventListener("submit", (event) => {
     change(() => {
         if (type === "person") {
             const character = {
+                ...project.characters.find((c) => c.id === targetId),
                 id: targetId || id(),
                 name: get("name"),
                 goal: get("goal"),
@@ -504,30 +590,79 @@ document.addEventListener("submit", (event) => {
             });
         if (type === "effect") {
             const t = form.dataset.type;
-            const effect = t === "relation"
+            const effect = t === "inventory"
                 ? {
                     id: id(),
-                    type: "relation",
-                    from: get("from"),
-                    to: get("to"),
-                    kind: get("custom") || get("kind"),
-                    remove: get("operation") === "remove",
+                    type: "inventory",
+                    person: get("person"),
+                    item: choice("item"),
+                    quantity: Number(get("quantity")),
+                    operation: get("operation"),
+                    ...(get("operation") === "transfer" ? { to: get("to") } : {}),
                 }
-                : t === "presence"
+                : t === "property"
                     ? {
                         id: id(),
-                        type: "presence",
+                        type: "property",
                         person: get("person"),
-                        present: get("operation") === "add",
+                        name: choice("property"),
+                        value: get("value"),
+                        remove: get("operation") === "remove",
                     }
-                    : {
-                        id: id(),
-                        type: "membership",
-                        person: get("person"),
-                        group: get("group"),
-                        join: get("operation") === "add",
-                    };
+                    : t === "relation"
+                        ? {
+                            id: id(),
+                            type: "relation",
+                            from: get("from"),
+                            to: get("to"),
+                            kind: get("custom") || get("kind"),
+                            remove: get("operation") === "remove",
+                        }
+                        : t === "presence"
+                            ? {
+                                id: id(),
+                                type: "presence",
+                                person: get("person"),
+                                present: get("operation") === "add",
+                            }
+                            : {
+                                id: id(),
+                                type: "membership",
+                                person: get("person"),
+                                group: get("group"),
+                                join: get("operation") === "add",
+                            };
             selectedBlock().effects.push(effect);
+            position = entries(project).findIndex((x) => x.block.id === selected) + 1;
+        }
+        if (type === "initial-state") {
+            const c = project.characters.find((c) => c.id === get("person"));
+            if (effectType === "inventory") {
+                c.inventory = (c.inventory || []).filter((i) => normalizeName(i.item) !== normalizeName(choice("item")));
+                if (Number(get("quantity")) > 0)
+                    c.inventory.push({
+                        item: choice("item"),
+                        quantity: Number(get("quantity")),
+                    });
+            }
+            else {
+                c.properties = (c.properties || []).filter((p) => normalizeName(p.name) !== normalizeName(choice("property")));
+                if (get("operation") !== "remove")
+                    c.properties.push({ name: choice("property"), value: get("value") });
+            }
+            position = 0;
+        }
+        if (type === "chronology") {
+            entries(project).forEach((e) => (e.block.duration = previous
+                ? duration(project, e.block)
+                : Number(get("defaultDuration"))));
+            project.settings.chronology = {
+                origin: get("origin"),
+                unit: choice("unit"),
+                defaultDuration: Number(get("defaultDuration")),
+                configured: true,
+            };
+            position = 0;
         }
         if (type === "settings") {
             project.title = get("title");
@@ -536,7 +671,7 @@ document.addEventListener("submit", (event) => {
                 tone: get("tone"),
                 audience: get("audience"),
                 premise: get("premise"),
-                panelsPerPage: Number(get("panelsPerPage")),
+                chronology: { ...chronology(project) },
             };
         }
         if (type === "loop") {
@@ -548,6 +683,18 @@ document.addEventListener("submit", (event) => {
 });
 document.addEventListener("change", (event) => {
     const input = event.target;
+    if (input.id === "inventory-operation") {
+        const recipient = document.querySelector("#transfer-recipient");
+        if (recipient)
+            recipient.hidden = input.value !== "transfer";
+    }
+    if (input.hasAttribute("data-duration")) {
+        if (!input.checkValidity()) {
+            input.reportValidity();
+            return;
+        }
+        change(() => (selectedBlock().duration = Number(input.value)));
+    }
     if (input.dataset.cast)
         change(() => {
             const block = selectedBlock();
@@ -560,6 +707,7 @@ document.addEventListener("change", (event) => {
     if (input.id === "direction")
         direction = Number(input.value);
     if (input.id === "zoom") {
+        stop();
         zoom = Number(input.value);
         render();
     }
@@ -668,3 +816,5 @@ document.addEventListener("visibilitychange", () => {
 render();
 if (startup)
     announce(startup);
+else if (!chronology(project).configured)
+    chronologyForm();
