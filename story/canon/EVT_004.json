@@ -1,0 +1,1 @@
+{ "id":"EVT_004", "storyTime":40, "title":"Le masque est porté", "changes":[{"subject":"LINETTE","property":"mask","value":"on"},{"subject":"LINETTE","property":"mask","value":null,"mode":"end"}] }

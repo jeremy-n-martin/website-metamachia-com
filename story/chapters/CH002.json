@@ -1,0 +1,1 @@
+{ "id":"CH002", "scenes":[{"id":"SC003","storyTime":30,"presentations":[{"scene":"SC003","event":"EVT_002"},{"scene":"SC003","event":"EVT_003"}]},{"id":"SC004","storyTime":40,"draftChanges":[{"subject":"LINETTE","property":"bag","value":"lost"}]}] }

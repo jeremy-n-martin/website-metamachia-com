@@ -1,0 +1,1 @@
+{ "id":"EVT_002", "storyTime":20, "title":"Le roi meurt hors de vue", "changes":[{"subject":"KING","property":"alive","value":false}], "beliefs":[{"holder":"LINETTE","subject":"KING","property":"alive","value":true}] }

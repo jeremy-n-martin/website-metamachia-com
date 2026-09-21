@@ -1,0 +1,1 @@
+{ "id":"CH001", "scenes":[{"id":"SC001","storyTime":10,"participants":["LINETTE"],"presentations":[{"scene":"SC001","event":"EVT_001"}]},{"id":"SC002","storyTime":20,"participants":["LINETTE","KING"],"presentations":[{"scene":"SC002","event":"EVT_002"}]}] }
