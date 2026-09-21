@@ -1,18 +1,25 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Metamachia Narrative System — un compilateur local de continuité narrative."><meta name="theme-color" content="#10111d"><title>Metamachia — MNS 0.1</title><link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/metamachia.css"></head>
-<body><main>
-<nav><a class="brand" href="/">METAMACHIA <span>/ MNS 0.1</span></a><a class="github" href="https://github.com/jeremy-n-martin/website-metamachia-com">Voir le dépôt ↗</a></nav>
-<section class="hero"><p class="eyebrow">Mémoire éditoriale locale</p><h1>Ne perdez plus<br><em>le fil de l’histoire.</em></h1><p class="intro">Metamachia Narrative System compile le canon de votre récit pour préparer chaque scène avec le bon état du monde, les bonnes connaissances et les bonnes contraintes.</p><div class="actions"><a class="button primary" href="https://github.com/jeremy-n-martin/website-metamachia-com">Explorer MNS 0.1</a><a class="button secondary" href="#principes">Comment ça marche</a></div></section>
-<section class="terminal"><div class="terminal-bar"><span></span><span></span><span></span><code>continuity report</code></div><pre><b>$ npm run compile -- --chapter CH002 --scene SC003 --view reader</b>
-
-✓ état reconstruit à l'instant de l'histoire
-✓ événements canoniques appliqués une seule fois
-✓ révélation lecteur disponible
-✓ brouillon exclu du canon
-
-<i>generated/context.md
-generated/context.json
-generated/continuity-report.json</i></pre></section>
-<section id="principes" class="grid"><article><p class="number">01</p><h2>Canon ouvert</h2><p>Ajoutez une propriété ou une valeur narrative sans modifier le moteur. Une information absente reste non documentée, jamais fausse par défaut.</p></article><article><p class="number">02</p><h2>Temps reconstruit</h2><p>Chaque scène est calculée à son moment dans l’histoire. Les flash-backs retrouvent donc le monde tel qu’il était réellement.</p></article><article><p class="number">03</p><h2>Vues séparées</h2><p>La vérité, ce qu’un personnage croit et ce qui a été révélé au lecteur ne sont pas la même chose.</p></article><article><p class="number">04</p><h2>Brouillon isolé</h2><p>Un plan ou une version de travail aide à écrire la scène suivante sans altérer le canon tant qu’il n’est pas validé.</p></article></section>
-<section class="flow"><p class="eyebrow">Un outil d’écriture, pas un générateur automatique</p><div class="flow-items"><span>Markdown<br><small>vision & notes</small></span><b>+</b><span>JSON<br><small>faits validés</small></span><b>→</b><span>TypeScript<br><small>compile</small></span><b>→</b><span>Contexte<br><small>pour la scène</small></span></div></section>
-</main><footer>METAMACHIA / MNS 0.1 — Markdown + JSON + TypeScript local</footer></body></html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Votre atelier d’écriture : construisez votre univers, écrivez vos chapitres et gardez le fil de votre histoire."
+    />
+    <meta name="theme-color" content="#163e39" />
+    <title>Metamachia — Atelier d’écriture</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/workshop.css?v=1" />
+    <script type="module" src="assets/mns/web/app.js?v=1"></script>
+  </head>
+  <body>
+    <div id="app"><div class="loading">Ouverture de votre atelier…</div></div>
+    <dialog id="modal" aria-labelledby="dialog-title"></dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <noscript
+      >Activez JavaScript pour ouvrir l’atelier d’écriture. Vos histoires sont
+      enregistrées dans votre navigateur.</noscript
+    >
+  </body>
+</html>

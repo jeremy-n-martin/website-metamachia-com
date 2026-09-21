@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "ES2022", "moduleResolution": "Bundler",
+    "outDir": "assets/mns", "rootDir": ".", "strict": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"], "types": [],
+    "skipLibCheck": true, "forceConsistentCasingInFileNames": true
+  },
+  "include": ["web/**/*.ts", "src/model.ts", "src/compiler.ts", "src/project.ts"]
+}

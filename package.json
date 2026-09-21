@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/test/**/*.test.js",
-    "compile": "npm run build && node dist/src/cli.js compile"
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "compile": "npm run build && node dist/src/cli.js compile",
+    "dev": "node scripts/serve.mjs",
+    "format": "prettier --write src web test scripts index.html assets/workshop.css"
   },
-  "devDependencies": { "typescript": "^5.7.3", "@types/node": "^22.10.2" }
+  "devDependencies": { "typescript": "^5.7.3", "@types/node": "^22.10.2", "prettier": "^3.9.8" }
 }
