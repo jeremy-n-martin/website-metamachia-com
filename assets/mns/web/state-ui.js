@@ -1,4 +1,4 @@
-import { chronology, stateAt, timeLabel, entries, objectChoices, PROPERTIES, } from "../src/timeline.js?v=528a9284a674";
+import { chronology, stateAt, timeLabel, entries, objectChoices, PROPERTIES, } from "../src/timeline.js?v=6883f063ff99";
 export const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const e = escapeHtml;
 export function effectDescription(t, effect) {

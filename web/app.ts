@@ -1,3 +1,4 @@
+import { linetteTimeline } from "../src/linette-example.js";
 import {
   Timeline,
   Block,
@@ -605,6 +606,28 @@ document.addEventListener("click", (event) => {
     );
   }
   if (action === "demo")
+    show(
+      "Choisir un exemple prérempli",
+      `<p>Chargez une frise éditable. Votre frise actuelle ne sera remplacée qu’après confirmation.</p><h3>Linette au Donjon</h3><p>Adaptation des planches de Jeremy Martin : 24 blocs, 11 personnages, une sous-boucle administrative et une carte de secours dont le transfert est visible pendant la lecture. L’extrait s’arrête avant la rencontre des prêtres noirs.</p>${button("linette-demo", "Charger Linette au Donjon", "", "primary")}<h3>Les saisons de nos liens</h3><p>Un exemple court de mariage, naissance et relations familiales.</p>${button("family-demo", "Charger l’exemple familial")}`,
+    );
+  if (action === "linette-demo")
+    confirmAction(
+      "Charger Linette au Donjon ?",
+      "La frise courante sera remplacée. Sauvegardez-la d’abord pour la conserver. Vous pourrez annuler le remplacement pendant cette session.",
+      "confirm-linette",
+    );
+  if (action === "confirm-linette") {
+    modal.close();
+    change(() => {
+      project = linetteTimeline();
+      position = 0;
+      selected = project.loops[0].blocks[0].id;
+    });
+    announce(
+      "Exemple Linette chargé. La lecture commence au départ dans la forêt ; les horaires attestés figurent dans les blocs.",
+    );
+  }
+  if (action === "family-demo")
     confirmAction(
       "Charger l’exemple ?",
       "La frise courante sera remplacée. Sauvegardez-la d’abord si vous souhaitez la conserver au-delà de cette session.",
